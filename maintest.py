@@ -7,6 +7,7 @@ import random
 from threading import Thread
 from flask import Flask
 
+# --- CONFIGURATION INITIALE ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('HadithSahih')
 
@@ -16,19 +17,23 @@ intents.members = True
 
 bot = commands.Bot(command_prefix='hs!', intents=intents)
 
+# --- FONCTIONS D'HÉBERGEMENT 24/7 ---
 def run_web_server():
     app = Flask('')
     @app.route('/')
     def home():
         return "Bot est en ligne !"
-    app.run(host='0.0.0.0', port=8080) # Render utilisera le port 8080
+    
+    # IMPORTANT : Utilise le port attribué par Render (ou 8080 par défaut)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
 
-# Dans votre fonction principale ou au début du script :
 def keep_alive():
+    """Lance le serveur Flask dans un thread séparé pour ne pas bloquer le bot."""
     t = Thread(target=run_web_server)
     t.start()
 
-
+# --- CLASSES DE VUES DISCORD (Aucun changement nécessaire) ---
 class LanguageSelect(ui.View):
 
     def __init__(self, command_name, ctx):
@@ -39,7 +44,7 @@ class LanguageSelect(ui.View):
 
     @ui.button(label="FR", style=discord.ButtonStyle.primary, emoji="🇫🇷")
     async def french_button(self, interaction: discord.Interaction,
-                            button: ui.Button):
+                             button: ui.Button):
         if interaction.user != self.ctx.author:
             await interaction.response.send_message(
                 "Ce n'est pas ta commande!", ephemeral=True)
@@ -75,13 +80,14 @@ class LanguageSelect(ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
 
 
+# --- FONCTIONS D'EMBEDS (Aucun changement nécessaire) ---
 def get_commands_embed(lang):
     if lang == "FR":
         embed = discord.Embed(
             title="Commandes de HadithSahih",
             description="Toutes les commandes de ce bot :satellite:",
             color=discord.Color.purple())
-        embed.add_field(name="   ", value="", inline=False)
+        embed.add_field(name="    ", value="", inline=False)
         embed.add_field(name=" • hs!hadith",
                         value="*Affiche un hadith sahih aléatoire*",
                         inline=False)
@@ -94,14 +100,14 @@ def get_commands_embed(lang):
         embed.add_field(name=" • hs!info",
                         value="*Informations sur le bot*",
                         inline=False)
-        embed.add_field(name="   ", value="", inline=False)
-        embed.set_footer(text="-                          @n9rs9")
+        embed.add_field(name="    ", value="", inline=False)
+        embed.set_footer(text="-             @n9rs9")
     else:
         embed = discord.Embed(
             title="HadithSahih's Commands",
             description="All commands for this bot :satellite:",
             color=discord.Color.purple())
-        embed.add_field(name="   ", value="", inline=False)
+        embed.add_field(name="    ", value="", inline=False)
         embed.add_field(name=" • hs!hadith",
                         value="*Displays a random Sahih hadith*",
                         inline=False)
@@ -114,8 +120,8 @@ def get_commands_embed(lang):
         embed.add_field(name=" • hs!info",
                         value="*Bot information*",
                         inline=False)
-        embed.add_field(name="   ", value="", inline=False)
-        embed.set_footer(text="-                          @n9rs9")
+        embed.add_field(name="    ", value="", inline=False)
+        embed.set_footer(text="-             @n9rs9")
     return embed
 
 
@@ -127,7 +133,7 @@ def get_ping_embed(lang, latency):
                               color=discord.Color.green())
     else:
         embed = discord.Embed(title=":ping_pong: Pong!",
-                              description=f"*Latency: {latency_ms}ms*",
+                              description=f"*Latency: {latency}ms*",
                               color=discord.Color.green())
     return embed
 
@@ -156,7 +162,7 @@ def get_hadith_embed(lang):
         embed = discord.Embed(title="✨ Hadith Sahih Aléatoire",
                               description=hadith_text,
                               color=discord.Color.blue())
-        embed.add_field(name="   ", value="", inline=False)
+        embed.add_field(name="    ", value="", inline=False)
         embed.set_footer(
             text=
             "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī 'ilman - Mon Seigneur, augmente ma connaissance"
@@ -166,7 +172,7 @@ def get_hadith_embed(lang):
         embed = discord.Embed(title="✨ Random Sahih Hadith",
                               description=hadith_text,
                               color=discord.Color.blue())
-        embed.add_field(name="   ", value="", inline=False)
+        embed.add_field(name="    ", value="", inline=False)
         embed.set_footer(
             text=
             "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī 'ilman - My Lord, increase me in knowledge"
@@ -191,6 +197,7 @@ def get_random_hadith(file_path="hadiths_eng.txt"):
         return "Une erreur est survenue / An error occurred."
 
 
+# --- ÉVÉNEMENTS DU BOT (Pas de changements majeurs) ---
 @bot.event
 async def on_ready():
     logger.info(f'{bot.user} is connected to Discord!')
@@ -206,6 +213,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
+# --- COMMANDES DU BOT (Ping modifié pour le message) ---
 @bot.command(name='commands')
 async def liste_commandes(ctx):
     embed = discord.Embed(
@@ -219,10 +227,14 @@ async def liste_commandes(ctx):
 
 @bot.command(name='ping')
 async def ping(ctx):
-    latency = round(bot.latency * 1000)
-    # Ligne modifiée pour inclure la mention de l'auteur
-    await ctx.send(
-        f'{ctx.author.mention} *:small_blue_diamond: Latency: {latency}ms*')
+    # La logique de sélection de langue est dans LanguageSelect, nous laissons l'envoi de l'embed pour l'instant
+    embed = discord.Embed(
+        title=":abcd: Choisissez votre langue / Choose your language",
+        description=
+        "*Cliquez sur un bouton ci-dessous*\n*Click a button below*",
+        color=discord.Color.red())
+    view = LanguageSelect("ping", ctx) # On passe 'ping' comme nom de commande
+    await ctx.send(embed=embed, view=view)
 
 
 @bot.command(name='info')
@@ -247,12 +259,19 @@ async def hadith(ctx):
     await ctx.send(embed=embed, view=view)
 
 
+# --- FONCTION DE LANCEMENT PRINCIPALE (MODIFIÉE) ---
 def main():
-    token = os.environ.get('DISCORD_BOT_TOKEN')
+    # S'assure de n'utiliser QU'UNE SEULE variable d'environnement pour le token
+    token = os.environ.get('DISCORD_TOKEN') 
     if not token:
         logger.error(
-            "DISCORD_BOT_TOKEN non trouvé dans les variables d'environnement!")
+            "DISCORD_TOKEN non trouvé dans les variables d'environnement!")
         return
+    
+    # 1. Lance le serveur Flask en arrière-plan
+    keep_alive() 
+    
+    # 2. Lance le bot Discord sur le thread principal
     logger.info("Starting the bot...")
     bot.run(token)
 
@@ -260,7 +279,8 @@ def main():
 if __name__ == "__main__":
     main()
 
-keep_alive()
-client.run('DISCORD_BOT_TOKEN')
-client.run(os.environ.get('DISCORD_TOKEN'))
-# owner : @n9rs9
+# --- Suppression des lignes de lancement redondantes et erronées :
+# keep_alive()
+# client.run('DISCORD_BOT_TOKEN') # Utilisation du mauvais nom de client/bot
+# client.run(os.environ.get('DISCORD_TOKEN')) # Utilisation du mauvais nom de client/bot
+# ---
