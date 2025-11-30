@@ -33,7 +33,7 @@ def keep_alive():
     t = Thread(target=run_web_server)
     t.start()
 
-# --- CLASSES DE VUES DISCORD (MODIFICATION : suppression de la logique ping) ---
+# --- CLASSES DE VUES DISCORD (ping RETIRÉ de la logique) ---
 class LanguageSelect(ui.View):
 
     def __init__(self, command_name, ctx):
@@ -68,6 +68,7 @@ class LanguageSelect(ui.View):
 
         if self.command_name == "commands":
             embed = get_commands_embed(self.language)
+        # L'ancienne condition 'elif self.command_name == "ping":' a été supprimée ici.
         elif self.command_name == "info":
             embed = get_info_embed(self.language, len(bot.guilds))
         elif self.command_name == "hadith":
@@ -78,7 +79,7 @@ class LanguageSelect(ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
 
 
-# --- FONCTIONS D'EMBEDS (MODIFICATION : suppression de get_ping_embed) ---
+# --- FONCTIONS D'EMBEDS (Aucun changement nécessaire) ---
 def get_commands_embed(lang):
     if lang == "FR":
         embed = discord.Embed(
@@ -204,7 +205,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-# --- COMMANDES DU BOT (Ping MODIFIÉ) ---
+# --- COMMANDES DU BOT (Ping MODIFIÉ et fonctionnel) ---
 @bot.command(name='commands')
 async def liste_commandes(ctx):
     embed = discord.Embed(
@@ -221,7 +222,7 @@ async def ping(ctx):
     # Calcule la latence en millisecondes
     latency_ms = round(bot.latency * 1000)
     
-    # Répond directement avec le format spécifié, SANS sélection de langue/embed
+    # Répond directement sans embed ni sélection de langue
     await ctx.send(
         f'{ctx.author.mention} *:small_blue_diamond: Latence : **{latency_ms}ms***'
     )
