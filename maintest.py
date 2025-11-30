@@ -201,7 +201,7 @@ def get_random_hadith(file_path="hadiths_eng.txt"):
 @bot.event
 async def on_ready():
     # Définition du statut personnalisé pour le bot
-    activity_name = "hs!help · github.com/n9rs9/HadithSahih"
+    activity_name = "hs!help"
     activity = discord.Game(name=activity_name)
     await bot.change_presence(status=discord.Status.online, activity=activity)
     
