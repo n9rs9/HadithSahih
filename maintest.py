@@ -125,18 +125,6 @@ def get_commands_embed(lang):
     return embed
 
 
-def get_ping_embed(lang, latency):
-    latency_ms = round(latency * 1000)
-    if lang == "FR":
-        embed = discord.Embed(title=":ping_pong: Pong!",
-                              description=f"*Latence: {latency_ms}ms*",
-                              color=discord.Color.green())
-    else:
-        embed = discord.Embed(title=":ping_pong: Pong!",
-                              description=f"*Latency: {latency_ms}ms*",
-                              color=discord.Color.green())
-    return embed
-
 
 def get_info_embed(lang, server_count):
     if lang == "FR":
