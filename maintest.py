@@ -133,7 +133,7 @@ def get_ping_embed(lang, latency):
                               color=discord.Color.green())
     else:
         embed = discord.Embed(title=":ping_pong: Pong!",
-                              description=f"*Latency: {latency}ms*",
+                              description=f"*Latency: {latency_ms}ms*",
                               color=discord.Color.green())
     return embed
 
@@ -197,9 +197,14 @@ def get_random_hadith(file_path="hadiths_eng.txt"):
         return "Une erreur est survenue / An error occurred."
 
 
-# --- ÉVÉNEMENTS DU BOT (Pas de changements majeurs) ---
+# --- ÉVÉNEMENTS DU BOT (MODIFIÉ) ---
 @bot.event
 async def on_ready():
+    # Définition du statut personnalisé pour le bot
+    activity_name = "hs!help · github.com/n9rs9/HadithSahih"
+    activity = discord.Game(name=activity_name)
+    await bot.change_presence(status=discord.Status.online, activity=activity)
+    
     logger.info(f'{bot.user} is connected to Discord!')
     logger.info(f'Bot ID: {bot.user.id}')
     logger.info(f'Connected servers: {len(bot.guilds)}')
@@ -213,7 +218,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-# --- COMMANDES DU BOT (Ping modifié pour le message) ---
+# --- COMMANDES DU BOT (Aucun changement nécessaire) ---
 @bot.command(name='commands')
 async def liste_commandes(ctx):
     embed = discord.Embed(
@@ -227,13 +232,12 @@ async def liste_commandes(ctx):
 
 @bot.command(name='ping')
 async def ping(ctx):
-    # La logique de sélection de langue est dans LanguageSelect, nous laissons l'envoi de l'embed pour l'instant
     embed = discord.Embed(
         title=":abcd: Choisissez votre langue / Choose your language",
         description=
         "*Cliquez sur un bouton ci-dessous*\n*Click a button below*",
         color=discord.Color.red())
-    view = LanguageSelect("ping", ctx) # On passe 'ping' comme nom de commande
+    view = LanguageSelect("ping", ctx)
     await ctx.send(embed=embed, view=view)
 
 
@@ -259,9 +263,8 @@ async def hadith(ctx):
     await ctx.send(embed=embed, view=view)
 
 
-# --- FONCTION DE LANCEMENT PRINCIPALE (MODIFIÉE) ---
+# --- FONCTION DE LANCEMENT PRINCIPALE ---
 def main():
-    # S'assure de n'utiliser QU'UNE SEULE variable d'environnement pour le token
     token = os.environ.get('DISCORD_TOKEN') 
     if not token:
         logger.error(
@@ -271,16 +274,10 @@ def main():
     # 1. Lance le serveur Flask en arrière-plan
     keep_alive() 
     
-    # 2. Lance le bot Discord sur le thread principal
+    # 2. Lance le bot Discord sur le thread principal (bloquant)
     logger.info("Starting the bot...")
     bot.run(token)
 
 
 if __name__ == "__main__":
     main()
-
-# --- Suppression des lignes de lancement redondantes et erronées :
-# keep_alive()
-# client.run('DISCORD_BOT_TOKEN') # Utilisation du mauvais nom de client/bot
-# client.run(os.environ.get('DISCORD_TOKEN')) # Utilisation du mauvais nom de client/bot
-# ---
