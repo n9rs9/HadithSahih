@@ -197,11 +197,11 @@ def get_random_hadith(file_path="hadiths_eng.txt"):
         return "Une erreur est survenue / An error occurred."
 
 
-# --- ÉVÉNEMENTS DU BOT (MODIFIÉ) ---
+# --- ÉVÉNEMENTS DU BOT ---
 @bot.event
 async def on_ready():
     # Définition du statut personnalisé pour le bot
-    activity_name = "hs!help"
+    activity_name = "hs!help · github.com/n9rs9/HadithSahih"
     activity = discord.Game(name=activity_name)
     await bot.change_presence(status=discord.Status.online, activity=activity)
     
@@ -218,7 +218,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-# --- COMMANDES DU BOT (Aucun changement nécessaire) ---
+# --- COMMANDES DU BOT (Ping MODIFIÉ) ---
 @bot.command(name='commands')
 async def liste_commandes(ctx):
     embed = discord.Embed(
@@ -232,13 +232,13 @@ async def liste_commandes(ctx):
 
 @bot.command(name='ping')
 async def ping(ctx):
-    embed = discord.Embed(
-        title=":abcd: Choisissez votre langue / Choose your language",
-        description=
-        "*Cliquez sur un bouton ci-dessous*\n*Click a button below*",
-        color=discord.Color.red())
-    view = LanguageSelect("ping", ctx)
-    await ctx.send(embed=embed, view=view)
+    # Calcule la latence en millisecondes
+    latency_ms = round(bot.latency * 1000)
+    
+    # Répond directement avec le format spécifié, sans sélection de langue/embed
+    await ctx.send(
+        f'{ctx.author.mention} *:small_blue_diamond: Latence : {latency_ms}ms*'
+    )
 
 
 @bot.command(name='info')
