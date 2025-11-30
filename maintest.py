@@ -33,7 +33,7 @@ def keep_alive():
     t = Thread(target=run_web_server)
     t.start()
 
-# --- CLASSES DE VUES DISCORD (Aucun changement nécessaire) ---
+# --- CLASSES DE VUES DISCORD (MODIFICATION : suppression de la logique ping) ---
 class LanguageSelect(ui.View):
 
     def __init__(self, command_name, ctx):
@@ -68,8 +68,6 @@ class LanguageSelect(ui.View):
 
         if self.command_name == "commands":
             embed = get_commands_embed(self.language)
-        elif self.command_name == "ping":
-            embed = get_ping_embed(self.language, bot.latency)
         elif self.command_name == "info":
             embed = get_info_embed(self.language, len(bot.guilds))
         elif self.command_name == "hadith":
@@ -80,7 +78,7 @@ class LanguageSelect(ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
 
 
-# --- FONCTIONS D'EMBEDS (Aucun changement nécessaire) ---
+# --- FONCTIONS D'EMBEDS (MODIFICATION : suppression de get_ping_embed) ---
 def get_commands_embed(lang):
     if lang == "FR":
         embed = discord.Embed(
@@ -101,7 +99,7 @@ def get_commands_embed(lang):
                         value="*Informations sur le bot*",
                         inline=False)
         embed.add_field(name="    ", value="", inline=False)
-        embed.set_footer(text="-             @n9rs9")
+        embed.set_footer(text="-          @n9rs9")
     else:
         embed = discord.Embed(
             title="HadithSahih's Commands",
@@ -121,7 +119,7 @@ def get_commands_embed(lang):
                         value="*Bot information*",
                         inline=False)
         embed.add_field(name="    ", value="", inline=False)
-        embed.set_footer(text="-             @n9rs9")
+        embed.set_footer(text="-          @n9rs9")
     return embed
 
 
@@ -223,9 +221,9 @@ async def ping(ctx):
     # Calcule la latence en millisecondes
     latency_ms = round(bot.latency * 1000)
     
-    # Répond directement avec le format spécifié, sans sélection de langue/embed
+    # Répond directement avec le format spécifié, SANS sélection de langue/embed
     await ctx.send(
-        f'{ctx.author.mention} *:small_blue_diamond: Latence : {latency_ms}ms*'
+        f'{ctx.author.mention} *:small_blue_diamond: Latence : **{latency_ms}ms***'
     )
 
 
@@ -253,14 +251,14 @@ async def hadith(ctx):
 
 # --- FONCTION DE LANCEMENT PRINCIPALE ---
 def main():
-    token = os.environ.get('DISCORD_TOKEN') 
+    token = os.environ.get('DISCORD_TOKEN')
     if not token:
         logger.error(
             "DISCORD_TOKEN non trouvé dans les variables d'environnement!")
         return
     
     # 1. Lance le serveur Flask en arrière-plan
-    keep_alive() 
+    keep_alive()
     
     # 2. Lance le bot Discord sur le thread principal (bloquant)
     logger.info("Starting the bot...")
