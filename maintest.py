@@ -262,4 +262,5 @@ if __name__ == "__main__":
 
 keep_alive()
 client.run('DISCORD_BOT_TOKEN')
+client.run(os.environ.get('DISCORD_TOKEN'))
 # owner : @n9rs9
