@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HadithSahih｜Discord</title>
+    <link rel="icon" type="image/jpeg" href="logoheader.jpg">
+    <link href="https://online-fonts.com/css?font=Proxima+Nova" rel="stylesheet">
+    <style>
+        /* CONSTANTES */
+        :root {
+            --transition-speed: 0.22s;
+        }
+
+
+        html {
+            overflow-x: hidden;
+            /* SUPPRIMÉ: scroll-behavior: smooth; -> Géré par JS pour la fluidité demandée */
+        }
+
+
+        body {
+            margin: 0;
+            font-family: 'Proxima Nova', sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            background: #111;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            /* Augmenté pour accueillir la section abaissée */
+            min-height: 300vh;
+        }
+
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 40px;
+            background-color: transparent;
+            margin-top: 0;
+        }
+
+
+        /* --- LOGO --- */
+        .logo {
+            margin-left: 105px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+
+
+        .logo img {
+            height: 135px;
+            width: auto;
+            display: block;
+            /* MODIFIÉ: Décalage de 5px vers le bas pour le logo (demande précédente) */
+            margin-top: 5px;
+            /* AJOUTÉ: Animation pour le logo */
+            animation: float-logo 4s ease-in-out infinite alternate;
+        }
+
+        /* ------------------------- */
+
+
+        /* Navigation */
+        nav {
+            margin-top: 5px;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .nav-links {
+            display: inline-block;
+            margin-left: 120px;
+        }
+
+        .donate-button-wrapper {
+            flex-shrink: 0;
+            margin-top: 5px;
+            margin-right: 120px;
+        }
+
+        .donate-button-wrapper a {
+            background-color: #DD296C;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px 10px 25px;
+            border-radius: 10px;
+            font-family: 'Proxima Nova', sans-serif;
+            font-weight: 700;
+            font-style: normal;
+            transition: background-color .3s ease, box-shadow .3s ease;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .donate-button-wrapper a:hover {
+            background-color: #CC2563;
+            box-shadow: 0 0 15px rgba(255, 64, 129, .8), 0 0 5px rgba(255, 64, 129, .5);
+        }
+
+        .donate-icon {
+            width: 25px;
+            height: 25px;
+            margin-left: 10px;
+            transition: transform .3s ease, filter .3s ease;
+        }
+
+        .donate-button-wrapper a:hover .donate-icon {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+        }
+
+        nav a {
+            margin: 0 15px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, .5);
+            font-family: 'Proxima Nova', sans-serif;
+            font-weight: 700;
+            font-style: normal;
+            display: inline-block;
+            position: relative;
+            padding-bottom: 5px;
+            transition: color .3s ease;
+        }
+
+        nav a:hover {
+            color: white;
+            text-shadow: 0 0 5px rgba(255, 255, 255, .5);
+        }
+
+
+        /* MODIFIÉ : Suppression de l'animation de soulignement */
+        nav a::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background-color: white;
+            bottom: 0;
+            left: 0;
+            transform: scaleX(0);
+            transform-origin: bottom center;
+            transition: transform .3s ease-out;
+            content: none;
+            /* Désactive la génération du soulignement */
+        }
+
+        nav a:hover::after {
+            transform: scaleX(0);
+            /* Assure que le soulignement n'apparaît pas au survol */
+        }
+
+
+        /* Styles communs pour les ballons rouges */
+        .floating-asset {
+            position: absolute;
+            z-index: 1000;
+            width: auto;
+            cursor: default;
+            pointer-events: none;
+            /* Permet de cliquer sur les éléments situés en dessous */
+        }
+
+
+        /* Style spécifique pour le ballon de droite */
+        #floating-asset-right {
+            right: -400px;
+            opacity: 0.6;
+            filter: blur(10px);
+            height: 1000px;
+            top: 50px;
+            z-index: 1000;
+            transform: rotate(-15deg);
+        }
+
+
+        /* Style spécifique pour le ballon de gauche */
+        #floating-asset-left {
+            left: -220px;
+            opacity: 0.7;
+            filter: blur(2px);
+            transform: rotate(15deg);
+            height: 550px;
+            top: 600px;
+            z-index: 10;
+            /* Place le ballon sous le texte/titre du pannel gauche (z-index 15) */
+        }
+
+        /* NOUVELLE RÈGLE : Animation subtile pour le logo */
+        @keyframes float-logo {
+            0% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+                /* Déplacement de 8px vers le haut */
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+
+        /* Animation pour le conteneur "Faites défiler" */
+        @keyframes scrollHintBounce {
+            0% {
+                transform: translateY(0);
+            }
+
+            10% {
+                transform: translateY(-15px);
+            }
+
+            20% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-15px);
+            }
+
+            40% {
+                transform: translateY(0);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+
+        .scroll-hint-container {
+            display: flex;
+            align-items: center;
+            /* Centre verticalement les éléments */
+            justify-content: center;
+            /* Centre horizontalement l'ensemble */
+            position: absolute;
+            /* Détache du flux */
+            width: 100%;
+            /* S'assure qu'il couvre toute la largeur pour le centrage */
+            top: 210px;
+            left: 0;
+            z-index: 20;
+            animation: scrollHintBounce 3s infinite;
+            /* Applique l'animation */
+        }
+
+
+        /* Image indicateur de défilement */
+        .scroll-indicator-icon {
+            width: 1%;
+            height: auto;
+            margin-right: 10px;
+            display: block;
+            transform: translateY(-6.5px);
+        }
+
+
+        /* Texte "Faites défiler" */
+        .scroll-hint-text {
+            color: white;
+            font-size: 1.6em;
+            font-weight: 700;
+            margin: 0;
+        }
+
+
+        /* --- Styles pour la Galerie Modale (Lightbox) --- */
+        .gallery-modal {
+            display: flex;
+            /* Toujours en flex, l'opacité/pointer-events gère la visibilité */
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.9);
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+
+            /* État Masqué/Initial */
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease-out;
+            /* Transition pour ouverture et fermeture */
+        }
+
+        /* Nouvel état Visible (ouvert) */
+        .gallery-modal.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* AJOUT CLÉ : Masque les modaux non visibles du flux (optimisation) */
+        .gallery-modal:not(.visible) .modal-content-wrapper {
+            display: none;
+        }
+
+
+        .modal-content-wrapper {
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            position: relative;
+        }
+
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 80vh;
+            display: block;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+
+        .modal-description {
+            color: white;
+            font-size: 1.2em;
+            padding: 15px 0 20px 0;
+            text-align: center;
+            max-width: 800px;
+        }
+
+
+        .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 65px;
+            color: #f1f1f1;
+            font-size: 48px;
+            /* 20% plus grand que 40px */
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            line-height: 1;
+        }
+
+
+        .close-btn:hover,
+        .close-btn:focus {
+            color: #bbb;
+        }
+
+
+        /* Styles pour les flèches de navigation dans le modal */
+        .prev-btn,
+        .next-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 50px;
+            color: white;
+            text-decoration: none;
+            transition: 0.3s;
+            user-select: none;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 50px;
+            width: 50px;
+            box-sizing: border-box;
+        }
+
+
+        .prev-btn {
+            left: -80px;
+        }
+
+
+        .next-btn {
+            right: -80px;
+        }
+
+
+        .prev-btn:hover,
+        .next-btn:hover {
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+
+        .prev-btn img,
+        .next-btn img {
+            width: 30px;
+            height: 30px;
+            filter: invert(100%);
+            display: block;
+        }
+
+
+        .next-btn img {
+            transform: rotate(180deg);
+        }
+
+
+        /* Container des panneaux */
+        .panels {
+            flex-grow: 1;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+            margin-top: -20px;
+            padding: 70px 20px 60px;
+            height: auto;
+            width: 100%;
+            position: relative;
+        }
+
+
+        /* Conteneur principal qui gère l'alignement */
+        .majestic-container {
+            display: flex;
+            justify-content: flex-end;
+            width: 1400px;
+            max-width: 95vw;
+            gap: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+
+        /* --- ZONE DE CONTENU "NOTRE BOT DISCORD" (texte) --- */
+        .rule-your-way-content {
+            position: absolute;
+            left: calc(5% + 63px);
+            top: 540px;
+            width: 650px;
+            z-index: 15;
+            height: auto;
+            display: block;
+            background: none;
+            border-radius: 0;
+            padding: 0;
+            position: relative;
+        }
+
+
+        /* NOUVELLE RÈGLE CSS pour l'image d'arrière-plan */
+        .content-background-image {
+            position: absolute;
+            top: -62%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 650px;
+            height: auto;
+            object-fit: cover;
+            z-index: -1;
+            opacity: 0.9;
+        }
+
+
+        /* Flèches supprimées */
+        .rule-your-way-content::after,
+        .rule-your-way-content::before {
+            content: none !important;
+        }
+
+
+        /* Texte du bot */
+        .majestic-title {
+            font-size: 35.6px;
+            font-weight: 700;
+            margin-top: 0px;
+            margin-bottom: 0px;
+            color: white;
+            line-height: 1.6;
+            /* Ombre noire existante + ombre blanche subtile pour la douceur */
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.9), 0 0 4px rgba(255, 255, 255, 0.4);
+            position: relative;
+            z-index: 1;
+        }
+
+
+        /* Autres styles de texte et éléments... */
+        .majestic-text {
+            font-size: 16.2px;
+            font-weight: 700;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.9);
+            margin-top: -5px;
+            margin-bottom: 0;
+            position: relative;
+            z-index: 1;
+            /* AJOUTÉ : Ombre portée adoucie */
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+        }
+
+        .custom-play-button {
+            width: 49px;
+            height: 49px;
+            cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+            margin: 0 17px 0 0;
+            display: block;
+        }
+
+
+        .custom-play-button:hover {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+        }
+
+
+
+        /* ... Reste des styles des panneaux ... */
+        .majestic-right-panel {
+            transform: translateX(-180px);
+            width: 781px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+            margin-left: 20px;
+        }
+
+
+        .video-placeholder {
+            width: 781px;
+            height: 269px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.3)), url('image_bf879c.jpg') no-repeat center top;
+            background-size: cover;
+            background-position: center;
+            border-radius: 18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+
+        .video-placeholder-content {
+            z-index: 20;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .video-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            margin: 0;
+            line-height: 1.2;
+        }
+
+
+        .thumbnails-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+
+        .thumbnails {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 100%;
+        }
+
+
+        .thumbnail-item {
+            width: 183px;
+            height: 92px;
+            aspect-ratio: auto;
+            background-color: #333;
+            /* background-image: url('image_bf879c.jpg'); */
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+
+        .thumbnail-item:hover {
+            transform: translateY(-3px);
+        }
+
+
+        .more-photos {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #222;
+            color: white;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+
+
+        .more-photos:hover {
+            background-color: #333;
+        }
+
+
+        /* --- STYLES POUR LA ROTATION DES ORBES --- */
+
+        /* RÉ-ACTIVÉ : Animation de rotation */
+        @keyframes orbit {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Conteneur parent pour le centrage du système complet (image + orbes) */
+        .central-orb-wrapper {
+            position: absolute;
+            left: 50%;
+            top: 1200px;
+            margin-top: -240px;
+            transform: translateX(-50%);
+            z-index: 100;
+            width: 850px;
+            height: 850px;
+            /* overflow: hidden; */
+        }
+
+        /* Image d'arrière-plan sous les orbes */
+        .orb-background-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 1920px;
+            height: 1080px;
+            object-fit: cover;
+            z-index: -2;
+            /* Définit l'état initial avec les DEUX propriétés de filtre pour aider la transition */
+            filter: grayscale(100%) saturate(1);
+            opacity: 0.6;
+            pointer-events: none;
+            /* MODIFIÉ : Transition ajustée à 0.4s (maintenue) */
+            transition: filter 0.4s ease-in-out, opacity 0.4s ease-in-out;
+            /* AJOUTÉ : Opacité à la transition */
+        }
+
+        /* NOUVEAU : Classe CSS pour l'état coloré (géré par JS) */
+        .orb-background-image.color-active {
+            /* Définit l'état final (Saturation +20% (1.3) et Opacité 0.7) */
+            filter: grayscale(0) saturate(1.3);
+            opacity: 0.7;
+        }
+
+        /* Conteneur d'image circulaire 350x350 */
+        .circular-image-container {
+            width: 350px;
+            height: 350px;
+            border-radius: 50%;
+            /* Rendre le conteneur circulaire */
+            overflow: hidden;
+            /* MODIFIÉ : Ombre portée adoucie NEUTRE/NOIRE */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            /* Ajout d'un curseur pour indiquer l'interactivité */
+
+            /* Centrage au milieu de son parent (central-orb-wrapper) */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            /* Au-dessus des petits ronds */
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .circular-image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Conteneur de l'anneau de rotation */
+        .orbit-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* RÉ-ACTIVÉ : Rotation lente et constante */
+            animation: orbit 30s linear infinite;
+        }
+
+        /* Les petits ronds qui orbitent (130x130). Appliqué à <div> et <a> */
+        .small-orb {
+            width: 130px;
+            height: 130px;
+            background-color: rgba(255, 255, 255, 0.85);
+            /* Blanc */
+            border-radius: 50%;
+            position: absolute;
+            /* Ombre portée adoucie BLANCHE/LUMINEUSE (conservée) */
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.2);
+            z-index: 0;
+            cursor: pointer;
+            /* RÉ-ACTIVÉ : La rotation doit compenser celle de l'anneau pour garder l'orbe "droit" */
+            animation: orbit 30s linear infinite reverse;
+
+            /* Centrer l'image à l'intérieur */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: visible;
+        }
+
+        /* SUPPRIMÉ : Suppression complète du style du pseudo-élément ::after */
+        .small-orb::after {
+            content: none;
+        }
+
+        /* NOUVEAU : Style pour les images de logo (Règle générale) */
+        .small-orb img {
+            max-width: 70%;
+            max-height: 70%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            /* LOGOS EN NOIR ET BLANC PAR DÉFAUT */
+            filter: grayscale(100%);
+            /* Assure que le logo ne tourne pas */
+            animation: none;
+            /* Retrait du soulignement par défaut des liens */
+            text-decoration: none;
+        }
+
+        /* MODIFIÉ : Discord: Totalement noir */
+        .orbit-ring .small-orb:nth-child(1) img {
+            filter: grayscale(100%) brightness(0);
+        }
+
+        /* NOUVEAU : Mail: Totalement noir */
+        .orbit-ring .small-orb:nth-child(4) img {
+            filter: grayscale(100%) brightness(0);
+        }
+
+
+        /* Positionnement des 5 orbes sur l'anneau.
+           Rayon de l'orbite (R): 280px (Rapproché de 20% par rapport à 350px).
+           Demi-taille de l'orbe (S/2): 65px. */
+
+        /* Orb 1: Angle 0deg (Droite) - Discord */
+        .orbit-ring .small-orb:nth-child(1) {
+            top: calc(50% - 65px);
+            left: calc(50% - 65px + 280px);
+        }
+
+        /* Orb 2: Angle 72deg (Bas-Droite) - GitHub */
+        .orbit-ring .small-orb:nth-child(2) {
+            top: calc(50% - 65px + 266px);
+            left: calc(50% - 65px + 86px);
+        }
+
+        /* Orb 3: Angle 144deg (Bas-Gauche) - TikTok */
+        .orbit-ring .small-orb:nth-child(3) {
+            top: calc(50% - 65px + 165px);
+            left: calc(50% - 65px - 226px);
+        }
+
+        /* Orb 4: Angle 216deg (Gauche) - Mail (NOUVEAU) */
+        .orbit-ring .small-orb:nth-child(4) {
+            top: calc(50% - 65px - 165px);
+            left: calc(50% - 65px - 226px);
+        }
+
+        /* Orb 5: Angle 288deg (Haut-Droite) - Vide */
+        .orbit-ring .small-orb:nth-child(5) {
+            top: calc(50% - 65px - 266px);
+            left: calc(50% - 65px + 86px);
+        }
+
+        /* --- STYLES DE LA NOUVELLE SECTION D'INSTALLATION --- */
+        .installation-section {
+            width: 100%;
+            /* MAINTENU: 850px pour un espace maximal */
+            margin-top: 850px;
+            padding: 80px 0;
+            background-color: #111;
+            /* Fond noir pour correspondre au thème */
+            display: flex;
+            justify-content: center;
+        }
+
+        .installation-container {
+            width: 1200px;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .installation-title {
+            /* Augmenté de 30% (1.625em) */
+            font-size: 1.625em;
+            font-weight: 700;
+            color: white;
+            /* MODIFIÉ: Rapproché du sous-titre */
+            margin-bottom: 0px;
+            text-shadow: none;
+        }
+
+        .installation-subtitle {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 50px;
+        }
+
+        .steps-grid {
+            display: flex;
+            /* Espacement entre les cases (step-card) = 52px */
+            gap: 52px;
+            justify-content: center;
+        }
+
+        .step-card {
+            flex: initial;
+            width: 379px;
+            /* Largeur fixe */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* RETIRÉ text-align: center; pour laisser le step-description s'aligner à gauche */
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            white-space: nowrap;
+        }
+
+        .step-number {
+            background-color: #DD296C;
+            color: white;
+            padding: 8px 12px;
+            font-size: 1.1em;
+            font-weight: 700;
+            border-radius: 5px;
+            margin-right: 0;
+            box-shadow: 0 0 10px rgba(221, 41, 108, 0.6);
+        }
+
+        .step-text {
+            /* Inutilisé après suppression du texte dans les headers */
+            font-size: 1.1em;
+            font-weight: 700;
+            color: white;
+        }
+
+        .step-image-container {
+            /* MODIFIÉ : Taille fixe 379x178 */
+            width: 379px;
+            height: 178px;
+            /* SUPPRIMÉ : padding: 5px; */
+            /* SUPPRIMÉ : background-color: #000; */
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            /* SUPPRIMÉ : box-shadow */
+            /* CONSERVÉ : la même bordure que .thumbnail-item */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Style pour les images dans les étapes */
+        .step-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            border-radius: 5px;
+        }
+
+        .step-description {
+            font-size: 0.95em;
+            /* MODIFIÉ : Mis à 700 pour bold */
+            font-weight: 700;
+            /* MODIFIÉ : Mis à blanc pur */
+            color: white;
+            line-height: 1.4;
+            min-height: 50px;
+            /* AJOUTÉ : Pour aligner le texte à gauche */
+            text-align: left;
+            /* AJOUTÉ : Pour que le texte prenne toute la largeur de la carte */
+            width: 100%;
+        }
+
+        /* NOUVEAU STYLE : pour le lien M'inviter de l'étape 1 */
+        .step-description a {
+            /* La couleur de la case ÉTAPE */
+            color: #DD296C;
+            /* Plus gras que le texte environnant */
+            font-weight: 900;
+            /* Ajoute le soulignement */
+            text-decoration: underline;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .step-description a:hover {
+            color: #CC2563;
+            /* Légèrement plus foncé au survol */
+        }
+
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background-color: transparent;
+            font-size: .9em;
+            font-family: 'Proxima Nova', sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            /* MODIFIÉ: Augmenté de 50px à 150px pour ajouter plus d'espace */
+            margin-top: 150px;
+        }
+
+        /* ========================================================================= */
+        /* --- MEDIA QUERIES (RESPONSIVE DESIGN pour ÉCRANS INFÉRIEURS à 768px) --- */
+        /* ========================================================================= */
+
+        @media screen and (max-width: 768px) {
+
+            /* Cache les ballons flottants qui ne sont pas nécessaires sur mobile */
+            .floating-asset {
+                display: none !important;
+            }
+
+            /* ------------------- */
+            /* 1. Entête et Menu   */
+            /* ------------------- */
+
+            header {
+                flex-direction: column;
+                padding: 10px;
+                align-items: center;
+            }
+
+            /* Centre le logo et réduit sa taille */
+            .logo {
+                margin-left: 0;
+                margin-top: 0;
+            }
+
+            .logo img {
+                height: 100px;
+                /* Taille légèrement réduite */
+                margin-top: 0;
+                /* Annule le décalage de 5px pour plus de propreté */
+                animation-duration: 3s;
+                /* Animation légèrement plus rapide */
+            }
+
+            /* Masque la navigation principale pour simplifier (elle pourrait être remplacée par un menu hamburger en JS) */
+            nav {
+                display: none;
+            }
+
+            /* Centre le bouton Donate */
+            .donate-button-wrapper {
+                margin: 15px auto 5px auto;
+                width: auto;
+            }
+
+            /* ------------------- */
+            /* 2. Contenu Principal */
+            /* ------------------- */
+
+            /* Le texte "Faites défiler" */
+            .scroll-hint-container {
+                top: 250px;
+            }
+
+            .scroll-hint-text {
+                font-size: 1.2em;
+            }
+
+            /* Conteneur principal (majestic-container) n'est plus nécessaire d'être décalé ou à droite */
+            .panels {
+                margin-top: 30px;
+                padding: 20px;
+            }
+
+            /* Assure que le conteneur du texte est centré et pleine largeur */
+            .rule-your-way-content {
+                position: static;
+                width: 90%;
+                margin: 0 auto 40px auto;
+                transform: none;
+                order: 2;
+                /* Pour le placer après les panneaux si on utilisait flex */
+            }
+
+            /* Assure que l'image de fond est masquée ou réduite pour le texte */
+            .content-background-image {
+                display: none;
+            }
+
+            .majestic-title {
+                font-size: 1.8em;
+                line-height: 1.4;
+                text-align: center;
+            }
+
+            .majestic-text {
+                font-size: 1em;
+                text-align: center;
+            }
+
+            /* Le panneau de droite doit être full width et sans décalage */
+            .majestic-right-panel {
+                width: 90%;
+                transform: none;
+                margin: 0 auto;
+                order: 1;
+                /* Pour le placer avant le texte si on utilisait flex */
+            }
+
+            /* Placeholders vidéo et miniatures adaptées */
+            .video-placeholder {
+                width: 100%;
+                height: 150px;
+                /* Réduit la hauteur */
+            }
+
+            .thumbnails {
+                grid-template-columns: repeat(2, 1fr);
+                /* 2 miniatures par ligne */
+                gap: 5px;
+            }
+
+            .thumbnail-item {
+                width: 100%;
+                height: 100px;
+            }
+
+            /* ------------------- */
+            /* 3. Système Orbital */
+            /* ------------------- */
+
+            .central-orb-wrapper {
+                /* Redimensionnement et repositionnement au centre du flux */
+                position: relative;
+                left: 50%;
+                top: 0;
+                margin-top: 100px;
+                transform: translateX(-50%) scale(0.55);
+                /* Mise à l'échelle pour s'adapter à l'écran (ex: 850*0.55 = ~467px) */
+                width: 850px;
+                height: 850px;
+                pointer-events: all;
+                /* Réactive l'interactivité */
+            }
+
+            .orb-background-image {
+                filter: none;
+                /* Désactive le grayscale initial pour simplifier */
+                opacity: 0.8;
+            }
+
+            .orb-background-image.color-active {
+                /* Évite la transition de couleur si le scale n'est pas suffisant pour le hover */
+                filter: none;
+                opacity: 0.8;
+            }
+
+            /* ------------------- */
+            /* 4. Section Installation */
+            /* ------------------- */
+
+            .installation-section {
+                margin-top: 50px;
+                /* Réduit l'espace avec la section précédente */
+                padding: 40px 0;
+            }
+
+            .installation-title {
+                font-size: 1.4em;
+            }
+
+            .steps-grid {
+                flex-direction: column;
+                /* Empile les cartes verticalement */
+                gap: 30px;
+                width: 90%;
+                margin: 0 auto;
+            }
+
+            .step-card {
+                width: 100%;
+                /* Les cartes prennent toute la largeur du conteneur */
+            }
+
+            .step-image-container {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 16 / 9;
+                /* Force un ratio d'aspect pour les images */
+            }
+
+            /* ------------------- */
+            /* 5. Modale */
+            /* ------------------- */
+
+            /* Déplace les boutons de navigation pour qu'ils ne débordent pas de l'écran */
+            .prev-btn {
+                left: 10px;
+            }
+
+            .next-btn {
+                right: 10px;
+            }
+
+            .close-btn {
+                right: 20px;
+                top: 10px;
+            }
+
+            .modal-description {
+                font-size: 1em;
+            }
+
+            /* ------------------- */
+            /* 6. Pied de page */
+            /* ------------------- */
+
+            .footer {
+                margin-top: 50px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <img src="https://static.vecteezy.com/system/resources/thumbnails/045/493/509/small/red-balloon-isolated-on-transparent-background-png.png" alt="Red Balloon" class="floating-asset" id="floating-asset-right">
+    <img src="https://static.vecteezy.com/system/resources/thumbnails/045/493/509/small/red-balloon-isolated-on-transparent-background-png.png" alt="Red Balloon" class="floating-asset" id="floating-asset-left">
+
+
+    <header>
+        <div class="logo">
+            <a href="#">
+                <img src="logo.png" alt="Médusa Logo">
+            </a>
+        </div>
+        <nav>
+            <div class="nav-links">
+                <a href="https://discord.com/oauth2/authorize?client_id=1444347179115216956&permissions=51200&integration_type=0&scope=bot">M'INVITER</a>
+                <a href="#">OFFRES</a>
+                <a href="#">FAQ</a>
+                <a href="#contact-orb-section" id="contact-link">CONTACT</a>
+            </div>
+        </nav>
+        <div class="donate-button-wrapper">
+            <a href="#">
+                DONATE FOR GAZA
+                <img src="https://static.vecteezy.com/system/resources/thumbnails/022/121/552/small/palestine-flag-heart-3d-png.png" class="donate-icon" alt="Heart with Palestine Flag">
+            </a>
+        </div>
+    </header>
+
+
+    <div class="rule-your-way-content">
+        <img src="assets1.png" alt="Arrière-plan décoratif" class="content-background-image">
+        <div class="majestic-title">NOTRE BOT DISCORD</div>
+        <p class="majestic-text">
+            🌟 Le savoir sur vos écrans ! Notre bot Discord dédié vous fournit quotidiennement des Hadith Sahih (authentiques) directement dans votre serveur. Il suffit d'une commande pour s'enrichir, parfait pour nourrir votre foi et augmenter la connaissance de la communauté. Simple, fiable et essentiel.
+        </p>
+    </div>
+
+
+    <div class="scroll-hint-container">
+        <img src="asset3.png" alt="Scroll Indicator" class="scroll-indicator-icon">
+        <p class="scroll-hint-text">Faites défiler</p>
+    </div>
+
+
+    <section class="panels">
+        <div class="majestic-right-panel">
+            <div class="video-placeholder">
+                <div class="video-placeholder-content">
+                    <img src="assets2.png" alt="Play Button Icon" class="custom-play-button">
+                    <div class="video-text">DÉCOUVREZ NOS AUTRES PROJETS</div>
+                </div>
+            </div>
+
+
+            <div class="thumbnails-group">
+                <div class="thumbnails">
+                    <a href="#modal-1" class="thumbnail-item" style="background-image: url('img1.jpg');"></a>
+                    <a href="#modal-2" class="thumbnail-item" style="background-image: url('img2.jpg');"></a>
+                    <a href="#modal-3" class="thumbnail-item" style="background-image: url('img3.jpg');"></a>
+                    <a href="#modal-4" class="thumbnail-item" style="background-image: url('img4.jpg');"></a>
+                </div>
+                <div class="thumbnails">
+                    <a href="#modal-5" class="thumbnail-item" style="background-image: url('img5.jpg');"></a>
+                    <a href="#modal-6" class="thumbnail-item" style="background-image: url('img6.jpg');"></a>
+                    <a href="#modal-7" class="thumbnail-item" style="background-image: url('img7.jpg');"></a>
+                    <a href="#modal-8" class="thumbnail-item" style="background-image: url('img8.jpg');"></a>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <div class="central-orb-wrapper" id="contact-orb-section">
+
+        <img src="assets4.png" alt="Arrière-plan décoratif" class="orb-background-image">
+
+        <div class="circular-image-container">
+            <img src="https://avatars.githubusercontent.com/u/87812034?v=4" alt="Calligraphie Arabe Circulaire" class="circular-image">
+        </div>
+
+        <div class="orbit-ring">
+            <a class="small-orb" href="https://discord.com/users/459756209591812097" target="_blank">
+                <img src="https://upload.wikimedia.org/wikipedia/fr/thumb/4/4f/Discord_Logo_sans_texte.svg/1818px-Discord_Logo_sans_texte.svg.png" alt="Logo Discord">
+            </a>
+
+            <a class="small-orb" href="https://github.com/n9rs9" target="_blank">
+                <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" alt="Logo GitHub">
+            </a>
+
+            <a class="small-orb" href="https://www.tiktok.com/@iqratawhid" target="_blank">
+                <img src="https://cdn.pixabay.com/photo/2021/06/15/12/28/tiktok-6338432_640.png" alt="Logo TikTok">
+            </a>
+
+            <a class="small-orb" href="mailto:hadithsahihdiscord@gmail.com">
+                <img src="https://icones.pro/wp-content/uploads/2021/02/icone-de-courrier-electronique-gris.png" alt="Logo Mail">
+            </a>
+
+            <div class="small-orb"></div>
+        </div>
+    </div>
+
+    <section class="installation-section">
+        <div class="installation-container">
+            <h2 class="installation-title">COMMENT M'INSTALLER ?</h2>
+            <p class="installation-subtitle">En seulement 3 étapes faciles, vous pouvez ajouter notre bot !</p>
+
+            <div class="steps-grid">
+
+                <div class="step-card">
+                    <div class="step-header">
+                        <span class="step-number">ÉTAPE 1</span>
+                    </div>
+                    <div class="step-image-container">
+                        <img src="step1.jpg" alt="Lien d'Invitation Discord" class="step-image">
+                    </div>
+                    <p class="step-description">Cliquez sur <a href="https://discord.com/oauth2/authorize?client_id=1444347179115216956&permissions=51200&integration_type=0&scope=bot">M'inviter</a> pour autoriser HadithSahih à venir sur votre serveur Discord</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-header">
+                        <span class="step-number">ÉTAPE 2</span>
+                    </div>
+                    <div class="step-image-container">
+                        <img src="step2.jpg" alt="/setup command" class="step-image">
+                    </div>
+                    <p class="step-description">Configurez le bot afin qu’il rejoigne l’un de vos serveurs</p>
+                </div>
+
+                <div class="step-card">
+                    <div class="step-header">
+                        <span class="step-number">ÉTAPE 3</span>
+                    </div>
+                    <div class="step-image-container">
+                        <img src="step3.jpg" alt="Bot en action" class="step-image">
+                    </div>
+                    <p class="step-description">Tout est prêt ! Utilisez hs!help ou hs!commands pour découvrir les fonctionnalités du bot</p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <div class="footer">
+        © 2025 HadithSahih. Tous droits réservés.
+    </div>
+
+
+    <div id="modal-1" class="gallery-modal">
+        <div class="modal-content-wrapper">
+            <a href="#" class="close-btn">&times;</a>
+            <a href="#modal-8" class="prev-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Previous"></a>
+            <img src="img1.jpg" alt="Image 1" class="modal-image">
+            <a href="#modal-2" class="next-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Next"></a>
+            <p class="modal-description">Nous avons <strong>coder, développé, tester</strong> le bot ainsi que la page web où vous etes actuellement, et restons pleinement <strong>impliqués</strong> dans toutes les étapes de conception et d'améliorations. 💻</p>
+        </div>
+    </div>
+
+    <div id="modal-2" class="gallery-modal">
+        <div class="modal-content-wrapper">
+            <a href="#" class="close-btn">&times;</a>
+            <a href="#modal-1" class="prev-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Previous"></a>
+            <img src="img2.jpg" alt="Image 2" class="modal-image">
+            <a href="#modal-3" class="next-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Next"></a>
+            <p class="modal-description">Nous recueillons uniquement des <strong>hadiths authentiques</strong> issus de livres <strong>fiables</strong> comme al-Bukhari, Muslim... et tout hadith <strong>douteux ou non vérifié</strong> n’est pas inclus. 📖</p>
+        </div>
+    </div>
+
+
+    <div id="modal-3" class="gallery-modal">
+        <div class="modal-content-wrapper">
+            <a href="#" class="close-btn">&times;</a>
+            <a href="#modal-2" class="prev-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Previous"></a>
+            <img src="img3.jpg" alt="Image 3" class="modal-image">
+            <a href="#modal-4" class="next-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Next"></a>
+            <p class="modal-description">Nous veillons à ce que chaque hadith présenté soit <strong>authentique</strong>, et restons <strong>attentifs à vos retours</strong> pour garantir la fiabilité. 🌟</p>
+        </div>
+    </div>
+
+    <div id="modal-4" class="gallery-modal">
+        <div class="modal-content-wrapper">
+            <a href="#" class="close-btn">&times;</a>
+            <a href="#modal-3" class="prev-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Previous"></a>
+            <img src="img4.jpg" alt="Image 4" class="modal-image">
+            <a href="#modal-5" class="next-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Next"></a>
+            <p class="modal-description">Vos <strong>signalements comptent</strong> : nous traquons les <strong>méchants bugs</strong> pour améliorer constamment le bot. 🔧</p>
+        </div>
+    </div>
+
+
+    <div id="modal-5" class="gallery-modal">
+        <div class="modal-content-wrapper">
+            <a href="#" class="close-btn">&times;</a>
+            <a href="#modal-4" class="prev-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Previous"></a>
+            <img src="img5.jpg" alt="Image 5" class="modal-image">
+            <a href="#modal-6" class="next-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Next"></a>
+            <p class="modal-description">Commencez à <strong>l’utiliser dans votre serveur</strong> ! Très simple à comprendre, faites de HadithSahih un <strong>incontournable</strong> de votre communauté Discord. 🎉</p>
+        </div>
+    </div>
+
+    <div id="modal-6" class="gallery-modal">
+        <div class="modal-content-wrapper">
+            <a href="#" class="close-btn">&times;</a>
+            <a href="#modal-5" class="prev-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Previous"></a>
+            <img src="img6.jpg" alt="Image 6" class="modal-image">
+            <a href="#modal-7" class="next-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Next"></a>
+            <p class="modal-description">Nous restons à votre <strong>écoute</strong> et lisons vos <strong>suggestions et idées</strong>, afin d’améliorer constamment votre expérience. 💡</p>
+        </div>
+    </div>
+
+
+    <div id="modal-7" class="gallery-modal">
+        <div class="modal-content-wrapper">
+            <a href="#" class="close-btn">&times;</a>
+            <a href="#modal-6" class="prev-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Previous"></a>
+            <img src="img7.jpg" alt="Image 7" class="modal-image">
+            <a href="#modal-8" class="next-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Next"></a>
+            <p class="modal-description">HadithSahih est actuellement disponible en <strong>plusieurs langues</strong>, et <strong>d’autres langues</strong> sont en cours de développement… 🌐</p>
+        </div>
+    </div>
+
+
+    <div id="modal-8" class="gallery-modal">
+        <div class="modal-content-wrapper">
+            <a href="#" class="close-btn">&times;</a>
+            <a href="#modal-7" class="prev-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Previous"></a>
+            <img src="img8.jpg" alt="Image 8" class="modal-image">
+            <a href="#modal-1" class="next-btn"><img src="https://cdn-icons-png.flaticon.com/512/608/608286.png" alt="Next"></a>
+            <p class="modal-description">Nous travaillons sur d’<strong>autres projets</strong> qui pourraient voir le jour afin qu’à chaque fois, nous apportions <strong>quelque chose de plus</strong> à notre communauté. ⏳</p>
+        </div>
+    </div>
+
+
+    <script>
+        // Fonction d'easing (accélération/décélération) pour le défilement
+        function easeInOutQuad(t) {
+            t /= 0.5;
+            if (t < 1) return 0.5 * t * t;
+            t--;
+            return -0.5 * (t * (t - 2) - 1);
+        }
+
+        // Fonction de défilement custom
+        function scrollToTarget(target, duration) {
+            const start = window.pageYOffset;
+            // Calcule la position verticale de l'élément cible
+            const targetTop = target.getBoundingClientRect().top + window.pageYOffset;
+            const distance = targetTop - start;
+            let startTime = null;
+
+            function animation(currentTime) {
+                if (startTime === null) startTime = currentTime;
+                const timeElapsed = currentTime - startTime;
+
+                // Calcul du ratio de progression (0 à 1) avec l'effet d'easing
+                const run = easeInOutQuad(Math.min(timeElapsed / duration, 1));
+
+                // Nouvelle position de défilement
+                const newScroll = start + distance * run;
+
+                window.scrollTo(0, newScroll);
+
+                if (timeElapsed < duration) {
+                    requestAnimationFrame(animation);
+                }
+            }
+            requestAnimationFrame(animation);
+        }
+
+        // --- LOGIQUE POUR LE DÉFILEMENT FLUIDE ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const contactLink = document.querySelector('nav a[href="#contact-orb-section"]');
+
+            if (contactLink) {
+                contactLink.addEventListener('click', function(e) {
+                    e.preventDefault(); // EMPÊCHE LE CHANGEMENT DE L'URL
+
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+
+                    if (targetElement) {
+                        // DUREE: 1200ms (1.2 secondes)
+                        scrollToTarget(targetElement, 1200);
+                    }
+                });
+            }
+        });
+
+
+        // --- LOGIQUE POUR LA GALERIE MODALE (MODIFIÉE) ---
+        const modals = document.querySelectorAll('.gallery-modal');
+        const thumbnailLinks = document.querySelectorAll('.thumbnail-item');
+        const modalIds = Array.from(modals).map(modal => modal.id);
+        const totalModals = modalIds.length;
+
+        function showModal(modalId) {
+            modals.forEach(modal => {
+                if (modal.classList.contains('visible')) {
+                    modal.classList.remove('visible');
+                    modal.addEventListener('transitionend', function handler() {
+                        modal.style.transition = 'none';
+                    }, {
+                        once: true
+                    });
+                }
+            });
+
+            const targetModal = document.getElementById(modalId);
+            if (targetModal) {
+                targetModal.style.transition = 'opacity 0.3s ease-out';
+                setTimeout(() => {
+                    targetModal.classList.add('visible');
+                }, 10);
+                // LIGNE SUPPRIMÉE : history.pushState(null, null, '#' + modalId);
+            } else {
+                // LIGNE SUPPRIMÉE : history.pushState(null, null, window.location.pathname + window.location.search);
+            }
+        }
+
+        function navigateModal(currentModal, direction) {
+            const currentIndex = modalIds.indexOf(currentModal.id);
+            if (currentIndex === -1) return;
+
+            let newIndex = currentIndex + direction;
+
+            if (newIndex >= totalModals) {
+                newIndex = 0;
+            } else if (newIndex < 0) {
+                newIndex = totalModals - 1;
+            }
+
+            showModal(modalIds[newIndex]);
+        }
+
+        // Ouvre le modal
+        thumbnailLinks.forEach(link => {
+            link.addEventListener('click', function(event) {
+                event.preventDefault(); // EMPÊCHE LE CHANGEMENT DE L'URL
+                const modalId = this.getAttribute('href').substring(1);
+                showModal(modalId);
+            });
+        });
+
+        // Ferme le modal et navigue
+        modals.forEach(modal => {
+            modal.addEventListener('click', function(event) {
+                // Gestion de la fermeture ou du clic sur les flèches
+                if (event.target === this || event.target.closest('.close-btn')) {
+                    event.preventDefault(); // EMPÊCHE LE CHANGEMENT DE L'URL (si le bouton était un a href="#")
+                    showModal('');
+                }
+
+                const prevButton = event.target.closest('.prev-btn');
+                const nextButton = event.target.closest('.next-btn');
+
+                if (prevButton) {
+                    event.preventDefault(); // EMPÊCHE LE CHANGEMENT DE L'URL
+                    navigateModal(this, -1);
+                } else if (nextButton) {
+                    event.preventDefault(); // EMPÊCHE LE CHANGEMENT DE L'URL
+                    navigateModal(this, 1);
+                }
+            });
+        });
+
+        // Fermeture avec la touche Échap
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const openModal = document.querySelector('.gallery-modal.visible');
+                if (openModal) {
+                    showModal('');
+                }
+            }
+        });
+
+        // SUPPRIMÉ : Bloc window.addEventListener('load') pour éviter l'ouverture basée sur l'URL hash.
+
+        // --- LOGIQUE POUR L'EFFET DE COULEUR DES ORBES (Inchangé) ---
+        const orbImage = document.querySelector('.orb-background-image');
+        const interactiveOrbs = document.querySelectorAll('.circular-image-container, .small-orb');
+        const activeClass = 'color-active';
+
+        interactiveOrbs.forEach(orb => {
+            orb.addEventListener('mouseenter', () => {
+                // Active le changement de couleur de l'image de fond
+                orbImage.classList.add(activeClass);
+            });
+            orb.addEventListener('mouseleave', () => {
+                // Désactive le changement de couleur de l'image de fond
+                orbImage.classList.remove(activeClass);
+            });
+        });
+    </script>
+
+</body>
+
+</html>
