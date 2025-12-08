@@ -80,7 +80,6 @@ class LanguageSelect(ui.View):
     @ui.button(label="ENG", style=discord.ButtonStyle.secondary, emoji="🇬🇧")
     async def english_button(self, interaction: discord.Interaction, button: ui.Button):
         self.language = "ENG"
-        self.language = "ENG"
         if not self.check_author(interaction): return
         await self.show_command_result(interaction)
 
@@ -267,13 +266,15 @@ def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages
         description_list += f"**{i}.** [{title}]({link})\n"
 
     # Message d'instruction + sources
-    # Si c'est la première page, on ajoute la description des sources
+    # L'instruction est maintenant en ITALIQUE
+    instruction_text = "*Copiez le lien et collez-le si cela ne fonctionne pas*"
+    
     if page_num == 0:
         # Ajout de la description des sources en premier
-        header_text = f"**{BIBLIO_SOURCES}**\n\n**Copiez le lien et collez-le si cela ne fonctionne pas**\n\n"
+        header_text = f"**{BIBLIO_SOURCES}**\n\n{instruction_text}\n\n"
     else:
-        # Pour les pages suivantes
-        header_text = "**Copiez le lien et collez-le si cela ne fonctionne pas**\n\n"
+        # Pour les pages suivantes, seulement l'instruction
+        header_text = f"{instruction_text}\n\n"
 
 
     if description_list:
@@ -281,9 +282,9 @@ def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages
     else:
         # Pour les pages vides
         if page_num == 0:
-             full_description = "**Aucun livre trouvé dans le fichier book_fr.txt.**"
+             full_description = f"{header_text}**Aucun livre trouvé dans le fichier book_fr.txt.**"
         else:
-             full_description = "**Fin de la bibliographie.**"
+             full_description = f"{header_text}**Fin de la bibliographie.**"
     
     embed = discord.Embed(
         title="📚 Bibliographie", 
