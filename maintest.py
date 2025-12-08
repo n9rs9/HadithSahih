@@ -5,13 +5,15 @@ import os
 import logging
 import random
 from typing import List, Tuple, Optional, Dict, Any
-import math # Importation nécessaire pour le calcul des pages
+import math
 
 # --- Configuration du Logger ---
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s:%(levelname)s:%(name)s: %(message)s')
 logger = logging.getLogger('HadithSahih')
 
 # --- Configuration du Bot et des Intents ---
+# Nécessaire pour les commandes et pour certaines informations sur les membres
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -20,9 +22,9 @@ intents.members = True
 bot = commands.Bot(command_prefix='hs!', intents=intents)
 
 # --- Constantes de Pagination ---
-BOOKS_PER_PAGE = 5 # Nombre de livres à afficher par page
+BOOKS_PER_PAGE = 5 
 
-# --- Classe View pour la Sélection de Langue (inchangée) ---
+# --- Classe View pour la Sélection de Langue (Légèrement modifiée pour le timeout) ---
 
 class LanguageSelect(ui.View):
     """Vue interactive pour permettre à l'utilisateur de sélectionner une langue (FR/ENG)."""
@@ -34,48 +36,53 @@ class LanguageSelect(ui.View):
         self.language = None
 
     async def on_timeout(self):
-        """Désactive les boutons si le temps d'attente est écoulé."""
+        """Désactive les boutons et édite le message après le timeout."""
         for item in self.children:
             item.disabled = True
+        
         try:
-            # Édite le message pour désactiver les boutons après le timeout
-            await self.ctx.message.edit(view=self)
-        except discord.NotFound:
-            pass # Le message a peut-être été supprimé
+            # Assurez-vous d'éditer le message si la vue est toujours attachée
+            await self.message.edit(view=self)
+        except (discord.NotFound, AttributeError, discord.HTTPException):
+            pass # Le message a peut-être été supprimé ou n'a pas été stocké
+
+    # Ajoutez cette méthode pour stocker le message d'interaction initial
+    async def start_interaction(self, ctx: commands.Context):
+        """Envoie le message initial et stocke l'objet Message."""
+        embed = discord.Embed(
+            title=":abcd: Choisissez votre langue / Choose your language",
+            description="*Cliquez sur un bouton ci-dessous*\n*Click a button below*",
+            color=discord.Color.red())
+        self.message = await ctx.send(embed=embed, view=self)
+
 
     def check_author(self, interaction: discord.Interaction) -> bool:
         """Vérifie si l'utilisateur qui clique est l'auteur de la commande."""
         if interaction.user != self.ctx.author:
             error_message = "This is not your command! / Ce n'est pas ta commande!"
-            # Envoi du message d'erreur éphémère à l'utilisateur non autorisé
-            # Note: Si le message original a été envoyé par `ctx.send`, il faut utiliser `interaction.response.send_message`
-            # avec `ephemeral=True` pour éviter un échec d'interaction si une réponse/édition a déjà été faite.
             if not interaction.response.is_done():
-                 interaction.response.send_message(error_message, ephemeral=True)
+                # Utilisez l'envoi éphémère si possible
+                interaction.response.send_message(error_message, ephemeral=True)
             return False
         return True
 
     @ui.button(label="FR", style=discord.ButtonStyle.primary, emoji="🇫🇷")
     async def french_button(self, interaction: discord.Interaction, button: ui.Button):
         self.language = "FR"
-        if not self.check_author(interaction):
-            return
+        if not self.check_author(interaction): return
         await self.show_command_result(interaction)
 
     @ui.button(label="ENG", style=discord.ButtonStyle.secondary, emoji="🇬🇧")
     async def english_button(self, interaction: discord.Interaction, button: ui.Button):
         self.language = "ENG"
-        if not self.check_author(interaction):
-            return
+        if not self.check_author(interaction): return
         await self.show_command_result(interaction)
 
     async def show_command_result(self, interaction: discord.Interaction):
         """Génère l'embed de résultat et édite le message pour l'afficher."""
-        # Désactive tous les boutons après le premier clic
         for item in self.children:
             item.disabled = True
 
-        # Mapping des commandes aux fonctions de génération d'embed
         embed_generators = {
             "commands": lambda lang: get_commands_embed(lang),
             "info": lambda lang: get_info_embed(lang, len(bot.guilds)),
@@ -98,17 +105,12 @@ class LanguageSelect(ui.View):
 
 # --- Fonctions Utilitaires de Fichier ---
 
-# (get_random_hadith est inchangée)
 def get_random_hadith(file_path: str = "hadiths_eng.txt") -> str:
     """Lit un fichier et renvoie une ligne aléatoire."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
-            hadiths = f.readlines()
-            hadiths = [h.strip() for h in hadiths if h.strip()]
-            if hadiths:
-                return random.choice(hadiths)
-            else:
-                return "Le fichier de hadiths est vide / The hadiths file is empty."
+            hadiths = [h.strip() for h in f.readlines() if h.strip()]
+            return random.choice(hadiths) if hadiths else "Le fichier de hadiths est vide / The hadiths file is empty."
     except FileNotFoundError:
         logger.error(f"Fichier non trouvé: {file_path}")
         return f"Erreur: Fichier {file_path} introuvable / Error: {file_path} not found."
@@ -118,38 +120,40 @@ def get_random_hadith(file_path: str = "hadiths_eng.txt") -> str:
 
 
 def get_books_fr(file_path: str = "book_fr.txt") -> List[Tuple[str, str]] | None:
-    """Lit le fichier des livres et renvoie une liste de (titre, lien)."""
+    """
+    Lit le fichier des livres. 
+    Format attendu des lignes : [LIEN] [TITRE]
+    Renvoie une liste de (titre, lien).
+    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
             books = []
-
-            for line in lines:
+            for line in f:
                 line = line.strip()
-                if not line:
+                if not line or not line.startswith('[') or ']' not in line:
                     continue
 
-                if "[" in line and "]" in line:
-                    # Le format est [Lien] [Titre]
-                    # On cherche la première occurrence de ']' et on sépare
-                    try:
-                        link_end = line.find(']')
-                        link_full = line[:link_end+1].strip() # Ex: [lien.com]
-                        title_full = line[link_end+1:].strip() # Ex: [Titre]
+                try:
+                    # Trouver la fin du premier crochet (qui contient le lien)
+                    link_end = line.find(']')
+                    
+                    # Extraire le lien (entre les premiers crochets)
+                    link = line[1:link_end].strip()
+                    
+                    # Le reste de la ligne devrait commencer par un autre crochet (le titre)
+                    title_start = line.find('[', link_end + 1)
+                    title_end = line.find(']', title_start + 1)
 
-                        # Extraction du lien (sans les crochets)
-                        link = link_full[1:-1]
+                    if link and title_start != -1 and title_end != -1:
+                        # Extraire le titre (entre les deuxièmes crochets)
+                        title = line[title_start + 1:title_end].strip()
                         
-                        # Extraction du titre (sans les crochets)
-                        title = title_full[1:-1]
+                        if title:
+                            books.append((title, link))
 
-                        if link and title:
-                             books.append((title, link))
-                    except IndexError:
-                        # Gère les lignes mal formatées (par exemple, un seul crochet)
-                        logger.warning(f"Ligne de livre mal formatée ignorée: {line}")
-                        continue
-
+                except Exception as e:
+                    logger.warning(f"Ligne de livre mal formatée ignorée: {line}. Erreur: {e}")
+                    continue
 
             return books
 
@@ -161,9 +165,8 @@ def get_books_fr(file_path: str = "book_fr.txt") -> List[Tuple[str, str]] | None
         return None
 
 # --- Fonctions de Génération d'Embeds (inchangées) ---
-
+# ... (get_commands_embed, get_info_embed, get_hadith_embed) ...
 def get_commands_embed(lang: str) -> discord.Embed:
-    # ... (inchangée)
     """Génère l'embed de la liste des commandes."""
     if lang == "FR":
         embed = discord.Embed(
@@ -202,7 +205,6 @@ def get_commands_embed(lang: str) -> discord.Embed:
 
 
 def get_info_embed(lang: str, server_count: int) -> discord.Embed:
-    # ... (inchangée)
     """Génère l'embed d'information sur le bot."""
     if lang == "FR":
         embed = discord.Embed(
@@ -222,7 +224,6 @@ def get_info_embed(lang: str, server_count: int) -> discord.Embed:
 
 
 def get_hadith_embed(lang: str) -> discord.Embed:
-    # ... (inchangée)
     """Génère l'embed d'un Hadith aléatoire."""
     if lang == "FR":
         hadith_text = get_random_hadith("hadiths_fr.txt")
@@ -247,17 +248,15 @@ def get_hadith_embed(lang: str) -> discord.Embed:
 def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages: int) -> discord.Embed:
     """Génère l'embed pour une page spécifique de la liste de livres."""
     
-    # Calcul des indices de début et de fin pour la page
     start_index = page_num * BOOKS_PER_PAGE
     end_index = start_index + BOOKS_PER_PAGE
     
-    # Extraction des livres pour la page actuelle
     page_books = books[start_index:end_index]
 
     description = ""
     # Création de la description avec les liens formatés
     for i, (title, link) in enumerate(page_books, start=start_index + 1):
-        # Utilisation du format Markdown pour le lien: [Titre](Lien)
+        # Format: [i. Titre](Lien)
         description += f"**{i}.** [{title}]({link})\n\n"
 
     embed = discord.Embed(
@@ -266,7 +265,6 @@ def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages
         color=discord.Color.gold()
     )
 
-    # Ajout du numéro de page dans le footer
     embed.set_footer(text=f"Page {page_num + 1}/{total_pages} • HadithSahih • @n9rs9")
     return embed
 
@@ -275,15 +273,14 @@ class BookBrowser(ui.View):
     """Vue interactive pour naviguer entre les pages de la liste de livres."""
 
     def __init__(self, ctx: commands.Context, books: List[Tuple[str, str]]):
-        super().__init__(timeout=180) # Timeout plus long pour la lecture
+        super().__init__(timeout=180)
         self.ctx = ctx
         self.books = books
         self.total_books = len(books)
-        # Calcul du nombre total de pages
         self.total_pages = math.ceil(self.total_books / BOOKS_PER_PAGE)
-        self.current_page = 0 # La page commence à l'index 0
+        self.current_page = 0
+        self.message: Optional[discord.Message] = None # Ajout du type hint pour le message
         
-        # Désactiver les boutons de navigation initiaux
         self.update_buttons()
 
     async def on_timeout(self):
@@ -291,33 +288,31 @@ class BookBrowser(ui.View):
         for item in self.children:
             item.disabled = True
         try:
-            # Édite le message pour désactiver les boutons après le timeout
-            # Le message initial est stocké dans `self.message` après l'envoi
-            await self.message.edit(view=self)
-        except (discord.NotFound, AttributeError):
+            if self.message:
+                await self.message.edit(view=self)
+        except (discord.NotFound, discord.HTTPException):
             pass
 
     def check_author(self, interaction: discord.Interaction) -> bool:
         """Vérifie si l'utilisateur qui clique est l'auteur de la commande."""
         if interaction.user != self.ctx.author:
             error_message = "This is not your command! / Ce n'est pas ta commande!"
-            interaction.response.send_message(error_message, ephemeral=True)
+            if not interaction.response.is_done():
+                 interaction.response.send_message(error_message, ephemeral=True)
             return False
         return True
 
     def update_buttons(self):
         """Met à jour l'état (disabled/emoji) des boutons de navigation."""
-        # Récupération des boutons par leur ID (car ils n'ont pas de nom d'attribut direct ici)
         
-        # Le premier enfant est le bouton de gauche
-        left_button = self.children[0] 
-        # Le deuxième enfant est le bouton de droite
-        right_button = self.children[1] 
+        # Le premier enfant est le bouton de gauche, le deuxième est le bouton de droite
+        left_button = self.children[0]
+        right_button = self.children[1]
 
         # Bouton Gauche (Précédent)
         if self.current_page == 0:
             left_button.disabled = True
-            left_button.style = discord.ButtonStyle.red # Utiliser un style différent pour 'X'
+            left_button.style = discord.ButtonStyle.red
             left_button.emoji = "❌"
         else:
             left_button.disabled = False
@@ -325,9 +320,9 @@ class BookBrowser(ui.View):
             left_button.emoji = "⬅️"
 
         # Bouton Droit (Suivant)
-        if self.current_page == self.total_pages - 1:
+        if self.current_page >= self.total_pages - 1:
             right_button.disabled = True
-            right_button.style = discord.ButtonStyle.red # Utiliser un style différent pour 'X'
+            right_button.style = discord.ButtonStyle.red
             right_button.emoji = "❌"
         else:
             right_button.disabled = False
@@ -336,8 +331,7 @@ class BookBrowser(ui.View):
 
     @ui.button(style=discord.ButtonStyle.primary, emoji="⬅️")
     async def previous_page(self, interaction: discord.Interaction, button: ui.Button):
-        if not self.check_author(interaction):
-            return
+        if not self.check_author(interaction): return
         
         if self.current_page > 0:
             self.current_page -= 1
@@ -345,14 +339,12 @@ class BookBrowser(ui.View):
             embed = get_book_page_embed(self.books, self.current_page, self.total_pages)
             await interaction.response.edit_message(embed=embed, view=self)
         else:
-            # Ne devrait pas arriver si le bouton est désactivé, mais bonne pratique
-            await interaction.response.edit_message(embed=get_book_page_embed(self.books, self.current_page, self.total_pages), view=self)
+            await interaction.response.edit_message(view=self) # Mise à jour de la vue sans changer l'embed
 
 
     @ui.button(style=discord.ButtonStyle.primary, emoji="➡️")
     async def next_page(self, interaction: discord.Interaction, button: ui.Button):
-        if not self.check_author(interaction):
-            return
+        if not self.check_author(interaction): return
         
         if self.current_page < self.total_pages - 1:
             self.current_page += 1
@@ -360,16 +352,15 @@ class BookBrowser(ui.View):
             embed = get_book_page_embed(self.books, self.current_page, self.total_pages)
             await interaction.response.edit_message(embed=embed, view=self)
         else:
-            # Ne devrait pas arriver si le bouton est désactivé, mais bonne pratique
-            await interaction.response.edit_message(embed=get_book_page_embed(self.books, self.current_page, self.total_pages), view=self)
+            await interaction.response.edit_message(view=self) # Mise à jour de la vue sans changer l'embed
 
 # ----------------------------------------------------
 # --- Événements et Commandes du Bot (Mise à Jour) ---
 # ----------------------------------------------------
 
+# (on_ready et on_message restent inchangés)
 @bot.event
 async def on_ready():
-    # ... (inchangée)
     """Se déclenche lorsque le bot est prêt."""
     logger.info(f'{bot.user} is connected to Discord!')
     logger.info(f'Bot ID: {bot.user.id}')
@@ -379,69 +370,61 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # ... (inchangée)
     """
-    Gestionnaire de messages. Il est important de laisser uniquement 
-    bot.process_commands(message) pour éviter la double réponse,
-    sauf si vous avez une logique de message personnalisée.
+    Gestionnaire de messages.
     """
     if message.author == bot.user:
         return
     await bot.process_commands(message) # Nécessaire pour traiter les commandes
 
-# (send_language_select inchangée)
+# (send_language_select est remplacé par LanguageSelect.start_interaction)
 async def send_language_select(ctx: commands.Context, command_name: str):
-    """Fonction utilitaire pour envoyer l'embed de sélection de langue."""
-    embed = discord.Embed(
-        title=":abcd: Choisissez votre langue / Choose your language",
-        description="*Cliquez sur un bouton ci-dessous*\n*Click a button below*",
-        color=discord.Color.red())
+    """Fonction utilitaire pour démarrer la vue de sélection de langue."""
     view = LanguageSelect(command_name, ctx)
-    await ctx.send(embed=embed, view=view)
+    await view.start_interaction(ctx)
 
 
 @bot.command(name='commands')
 async def list_commands(ctx: commands.Context):
-    # ... (inchangée)
     """Affiche la liste des commandes avec sélection de langue."""
     await send_language_select(ctx, "commands")
 
 
 @bot.command(name='ping')
 async def ping(ctx: commands.Context):
-    # ... (inchangée)
     """
     Affiche la latence du bot sans sélecteur de langue.
-    Format : @nomutilisateur :small_blue_diamond: Latence : **Xms**
     """
     latency_ms = round(bot.latency * 1000)
-    
     response = f"{ctx.author.mention} :small_blue_diamond: Latence : **{latency_ms}ms**"
-    
     await ctx.send(response)
 
 
 @bot.command(name='info')
 async def info(ctx: commands.Context):
-    # ... (inchangée)
     """Affiche les informations du bot avec sélection de langue."""
     await send_language_select(ctx, "info")
 
 
 @bot.command(name='hadith')
 async def hadith(ctx: commands.Context):
-    # ... (inchangée)
     """Affiche un Hadith aléatoire avec sélection de langue."""
     await send_language_select(ctx, "hadith")
 
 
 @bot.command(name="book")
 async def book(ctx: commands.Context):
-    """Affiche une liste de livres islamiques en français avec pagination."""
+    """
+    Affiche une liste de livres islamiques en français avec pagination.
+    Fonctionne comme suit :
+    1. Lit les livres depuis 'book_fr.txt'.
+    2. Calcule les pages.
+    3. Envoie la première page avec les boutons de navigation (BookBrowser).
+    """
     books = get_books_fr()
 
     if not books:
-        await ctx.send("❌ Aucun livre trouvé dans **book_fr.txt**")
+        await ctx.send("❌ Aucun livre trouvé ou le fichier **book_fr.txt** est vide/mal formaté.")
         return
 
     total_pages = math.ceil(len(books) / BOOKS_PER_PAGE)
@@ -456,28 +439,28 @@ async def book(ctx: commands.Context):
     # 2. Créer la vue du navigateur
     view = BookBrowser(ctx, books)
     
-    # 3. Envoyer le message avec la vue et stocker le message
-    message = await ctx.send(embed=first_page_embed, view=view)
-    view.message = message # Stocker le message pour l'édition future (on_timeout)
+    # 3. Envoyer le message et stocker le message dans l'objet View
+    view.message = await ctx.send(embed=first_page_embed, view=view)
 
 
 # --- Fonction Principale ---
 
 def main():
-    # ... (inchangée)
     """Fonction principale pour démarrer le bot."""
     token = os.environ.get('DISCORD_BOT_TOKEN')
     if not token:
-        # Erreur pour indiquer que le token n'est pas trouvé
         logger.error(
-            "DISCORD_BOT_TOKEN non trouvé dans les variables d'environnement!")
+            "DISCORD_BOT_TOKEN non trouvé dans les variables d'environnement! Arrêt du bot.")
         return
     logger.info("Starting the bot...")
-    # Lancement du bot
-    bot.run(token)
+    try:
+        # Lancement du bot
+        bot.run(token)
+    except discord.LoginFailure:
+        logger.critical("Échec de la connexion: Jeton invalide.")
+    except Exception as e:
+        logger.critical(f"Erreur inattendue au lancement du bot: {e}")
 
 
 if __name__ == "__main__":
     main()
-# owner : @n9rs9
-# github : https://github.com/n9rs9
