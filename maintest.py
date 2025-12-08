@@ -31,7 +31,7 @@ BOOKS_PER_PAGE = 10 # 10 éléments par page
 # --- Sources de la Bibliographie ---
 BIBLIO_SOURCES = "• Site officiel de la mosquée de Médine\n• Site officiel du gouvernement Saoudien"
 
-# --- Classe View pour la Sélection de Langue (inchangée) ---
+# --- Classe View pour la Sélection de Langue (MODIFIÉE) ---
 
 class LanguageSelect(ui.View):
     """Vue interactive pour permettre à l'utilisateur de sélectionner une langue (FR/ENG)."""
@@ -52,14 +52,15 @@ class LanguageSelect(ui.View):
         except (discord.NotFound, AttributeError, discord.HTTPException):
             pass 
 
-    # Ajoutez cette méthode pour stocker le message d'interaction initial
-    async def start_interaction(self, ctx: commands.Context):
+    # MODIFIÉ: Renommé et rendu plus simple
+    async def send_initial_message(self):
         """Envoie le message initial et stocke l'objet Message."""
         embed = discord.Embed(
             title=":abcd: Choisissez votre langue / Choose your language",
             description="*Cliquez sur un bouton ci-dessous*\n*Click a button below*",
             color=discord.Color.red())
-        self.message = await ctx.send(embed=embed, view=self)
+        # Utilisation de self.ctx.send directement
+        self.message = await self.ctx.send(embed=embed, view=self)
 
 
     def check_author(self, interaction: discord.Interaction) -> bool:
@@ -247,7 +248,7 @@ def get_hadith_embed(lang: str) -> discord.Embed:
     return embed
 
 # ----------------------------------------------------
-# --- Classes et Fonctions pour la Pagination du Livre (MODIFIÉES) ---
+# --- Classes et Fonctions pour la Pagination du Livre (inchangées) ---
 # ----------------------------------------------------
 
 def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages: int) -> discord.Embed:
@@ -399,12 +400,14 @@ async def on_ready():
     logger.info(f'Prefix: hs!')
 
 
-# NOTE : La fonction on_message a été supprimée pour éviter le double dispatch.
+# FONCTION on_message RETIRÉE pour éviter le double dispatch.
+
 
 async def send_language_select(ctx: commands.Context, command_name: str):
     """Fonction utilitaire pour démarrer la vue de sélection de langue."""
     view = LanguageSelect(command_name, ctx)
-    await view.start_interaction(ctx)
+    # MODIFIÉ : Utilise la méthode mise à jour
+    await view.send_initial_message()
 
 
 @bot.command(name='commands')
