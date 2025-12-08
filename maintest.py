@@ -15,13 +15,13 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 
+# Initialisation du bot avec le préfixe 'hs!'
 bot = commands.Bot(command_prefix='hs!', intents=intents)
 
 # --- Classe View pour la Sélection de Langue ---
 
 class LanguageSelect(ui.View):
-    """Vue interactive pour permettre à l'utilisateur de sélectionner une langue (FR/ENG)
-    pour l'affichage du résultat d'une commande (sauf ping)."""
+    """Vue interactive pour permettre à l'utilisateur de sélectionner une langue (FR/ENG)."""
 
     def __init__(self, command_name: str, ctx: commands.Context):
         super().__init__(timeout=60)
@@ -34,16 +34,16 @@ class LanguageSelect(ui.View):
         for item in self.children:
             item.disabled = True
         try:
+            # Édite le message pour désactiver les boutons après le timeout
             await self.ctx.message.edit(view=self)
         except discord.NotFound:
-            pass
-        except Exception as e:
-            logger.error(f"Erreur lors de la désactivation des boutons en timeout: {e}")
+            pass # Le message a peut-être été supprimé
 
     def check_author(self, interaction: discord.Interaction) -> bool:
         """Vérifie si l'utilisateur qui clique est l'auteur de la commande."""
         if interaction.user != self.ctx.author:
             error_message = "This is not your command! / Ce n'est pas ta commande!"
+            # Envoi du message d'erreur éphémère à l'utilisateur non autorisé
             interaction.response.send_message(error_message, ephemeral=True)
             return False
         return True
@@ -64,9 +64,11 @@ class LanguageSelect(ui.View):
 
     async def show_command_result(self, interaction: discord.Interaction):
         """Génère l'embed de résultat et édite le message pour l'afficher."""
+        # Désactive tous les boutons après le premier clic
         for item in self.children:
             item.disabled = True
 
+        # Mapping des commandes aux fonctions de génération d'embed
         embed_generators = {
             "commands": lambda lang: get_commands_embed(lang),
             "info": lambda lang: get_info_embed(lang, len(bot.guilds)),
@@ -74,6 +76,7 @@ class LanguageSelect(ui.View):
         }
 
         embed_func = embed_generators.get(self.command_name)
+        
         if embed_func:
             result_embed = embed_func(self.language)
         else:
@@ -83,6 +86,7 @@ class LanguageSelect(ui.View):
                 color=discord.Color.red()
             )
 
+        # Édition du message original
         await interaction.response.edit_message(embed=result_embed, view=self)
 
 # --- Fonctions de Génération d'Embeds ---
@@ -158,7 +162,7 @@ def get_hadith_embed(lang: str) -> discord.Embed:
                               description=hadith_text,
                               color=discord.Color.blue())
         footer_text = "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī 'ilman - My Lord, increase me in knowledge"
-
+    
     embed.set_footer(text=footer_text)
     return embed
 
@@ -219,6 +223,18 @@ async def on_ready():
     logger.info(f'Connected servers: {len(bot.guilds)}')
     logger.info(f'Prefix: hs!')
 
+
+@bot.event
+async def on_message(message):
+    """
+    Gestionnaire de messages. Il est important de laisser uniquement 
+    bot.process_commands(message) pour éviter la double réponse,
+    sauf si vous avez une logique de message personnalisée.
+    """
+    if message.author == bot.user:
+        return
+    await bot.process_commands(message) # Nécessaire pour traiter les commandes
+
 # --- Commandes du Bot ---
 
 async def send_language_select(ctx: commands.Context, command_name: str):
@@ -239,14 +255,14 @@ async def list_commands(ctx: commands.Context):
 
 @bot.command(name='ping')
 async def ping(ctx: commands.Context):
-    """Affiche directement la latence du bot dans le format souhaité (une seule fois)."""
+    """
+    Affiche la latence du bot sans sélecteur de langue.
+    Format : @nomutilisateur :small_blue_diamond: Latence : **Xms**
+    """
     latency_ms = round(bot.latency * 1000)
-
-    # Format exact demandé : @nomutilisateur :small_blue_diamond: Latence : **Xms**
+    
     response = f"{ctx.author.mention} :small_blue_diamond: Latence : **{latency_ms}ms**"
-
-    # CECI EST LA SEULE LIGNE D'ENVOI. Si la réponse est en double,
-    # c'est que le bot est lancé deux fois.
+    
     await ctx.send(response)
 
 
@@ -274,6 +290,7 @@ async def book(ctx: commands.Context):
     description = ""
     # Création de la description avec les liens formatés
     for i, (title, link) in enumerate(books, start=1):
+        # Utilisation du format Markdown pour le lien: [Titre](Lien)
         description += f"**{i}.** [{title}]({link})\n\n"
 
     embed = discord.Embed(
@@ -292,15 +309,16 @@ def main():
     """Fonction principale pour démarrer le bot."""
     token = os.environ.get('DISCORD_BOT_TOKEN')
     if not token:
+        # Erreur pour indiquer que le token n'est pas trouvé
         logger.error(
             "DISCORD_BOT_TOKEN non trouvé dans les variables d'environnement!")
         return
     logger.info("Starting the bot...")
+    # Lancement du bot
     bot.run(token)
 
 
 if __name__ == "__main__":
     main()
-
 # owner : @n9rs9
-# github : https://github.com/n9rs9
+# github : https://github.com/n9rs9"
