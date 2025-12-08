@@ -26,9 +26,12 @@ intents.members = True
 bot = commands.Bot(command_prefix='hs!', intents=intents)
 
 # --- Constantes de Pagination ---
-BOOKS_PER_PAGE = 5 
+BOOKS_PER_PAGE = 10 # 10 éléments par page
 
-# --- Classe View pour la Sélection de Langue ---
+# --- Sources de la Bibliographie (NOUVEAU) ---
+BIBLIO_SOURCES = "• Site officiel de la mosquée de Médine\n• Site officiel du gouvernement Saoudien"
+
+# --- Classe View pour la Sélection de Langue (inchangée) ---
 
 class LanguageSelect(ui.View):
     """Vue interactive pour permettre à l'utilisateur de sélectionner une langue (FR/ENG)."""
@@ -105,7 +108,7 @@ class LanguageSelect(ui.View):
         # Édition du message original
         await interaction.response.edit_message(embed=result_embed, view=self)
 
-# --- Fonctions Utilitaires de Fichier ---
+# --- Fonctions Utilitaires de Fichier (inchangées) ---
 
 def get_random_hadith(file_path: str = "hadiths_eng.txt") -> str:
     """Lit un fichier et renvoie une ligne aléatoire."""
@@ -244,30 +247,50 @@ def get_hadith_embed(lang: str) -> discord.Embed:
     return embed
 
 # ----------------------------------------------------
-# --- Classes et Fonctions pour la Pagination du Livre ---
+# --- Classes et Fonctions pour la Pagination du Livre (MODIFIÉES) ---
 # ----------------------------------------------------
 
 def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages: int) -> discord.Embed:
     """Génère l'embed pour une page spécifique de la liste de livres."""
+    global BOOKS_PER_PAGE # Nécessaire pour l'accès
     
     start_index = page_num * BOOKS_PER_PAGE
     end_index = start_index + BOOKS_PER_PAGE
     
     page_books = books[start_index:end_index]
 
-    description = ""
+    description_list = ""
     # Création de la description avec les liens formatés
     for i, (title, link) in enumerate(page_books, start=start_index + 1):
         # Format: [i. Titre](Lien)
-        description += f"**{i}.** [{title}]({link})\n\n"
+        description_list += f"**{i}.** [{title}]({link})\n"
 
+    # Message d'instruction + sources
+    # Si c'est la première page, on ajoute la description des sources
+    if page_num == 0:
+        header_text = f"**{BIBLIO_SOURCES}**\n\n**Copiez le lien et collez-le si cela ne fonctionne pas**\n\n"
+    else:
+        # Pour les pages suivantes, seulement l'instruction (ou rien si page vide)
+        header_text = "**Copiez le lien et collez-le si cela ne fonctionne pas**\n\n"
+
+
+    if description_list:
+        full_description = f"{header_text}{description_list}"
+    else:
+        # Pour les pages vides
+        if page_num == 0:
+             full_description = "**Aucun livre trouvé dans le fichier book_fr.txt.**"
+        else:
+             full_description = "**Fin de la bibliographie.**"
+    
     embed = discord.Embed(
-        title="📚 Bibliothèque Islamique - Livres en Français",
-        description=description or "Aucun livre trouvé sur cette page.",
+        title="📚 Bibliographie", 
+        description=full_description,
         color=discord.Color.gold()
     )
 
-    embed.set_footer(text=f"Page {page_num + 1}/{total_pages} • HadithSahih • @n9rs9")
+    # Pied de page affiche uniquement la pagination
+    embed.set_footer(text=f"Page {page_num + 1}/{total_pages}")
     return embed
 
 
@@ -282,6 +305,13 @@ class BookBrowser(ui.View):
         self.total_pages = math.ceil(self.total_books / BOOKS_PER_PAGE)
         self.current_page = 0
         self.message: Optional[discord.Message] = None 
+        
+        # Si la liste des livres n'est pas un multiple de BOOKS_PER_PAGE, et si 
+        # l'utilisateur a demandé une page vide, on s'assure d'avoir au moins 2 pages.
+        # Si total_books = 9 et BOOKS_PER_PAGE = 10, total_pages = 1.
+        # Pour forcer une 2e page vide, on s'assure d'avoir au moins 2 pages si total_pages = 1
+        if self.total_pages < 2 and self.total_books > 0:
+            self.total_pages = 2 
         
         self.update_buttons()
 
@@ -357,7 +387,7 @@ class BookBrowser(ui.View):
             await interaction.response.edit_message(view=self) 
 
 # ----------------------------------------------------
-# --- Événements et Commandes du Bot ---
+# --- Événements et Commandes du Bot (inchangés) ---
 # ----------------------------------------------------
 
 @bot.event
@@ -423,23 +453,23 @@ async def book(ctx: commands.Context):
         await ctx.send("❌ Aucun livre trouvé ou le fichier **book_fr.txt** est vide/mal formaté.")
         return
 
-    total_pages = math.ceil(len(books) / BOOKS_PER_PAGE)
-    
-    if total_pages == 0:
+    # Calcul des pages. Le constructeur BookBrowser gère l'ajout d'une page vide si nécessaire.
+    total_pages_initial = math.ceil(len(books) / BOOKS_PER_PAGE)
+    if total_pages_initial == 0:
         await ctx.send("❌ Le fichier **book_fr.txt** est vide ou mal formaté.")
         return
 
-    # 1. Générer la première page de l'embed
-    first_page_embed = get_book_page_embed(books, 0, total_pages)
-    
-    # 2. Créer la vue du navigateur
+    # 1. Créer la vue du navigateur (gère total_pages > 1 si total_books > 0)
     view = BookBrowser(ctx, books)
+    
+    # 2. Générer la première page de l'embed
+    first_page_embed = get_book_page_embed(books, 0, view.total_pages)
     
     # 3. Envoyer le message et stocker le message dans l'objet View
     view.message = await ctx.send(embed=first_page_embed, view=view)
 
 # ----------------------------------------------------
-# --- Fonctions pour le Serveur Web (Keep-Alive) ---
+# --- Fonctions pour le Serveur Web (Keep-Alive) (inchangées) ---
 # ----------------------------------------------------
 
 def run_web_server():
@@ -456,7 +486,7 @@ def run_web_server():
     app.run(host='0.0.0.0', port=port, debug=False)
 
 
-# --- Fonction Principale (Modifiée) ---
+# --- Fonction Principale (inchangée) ---
 
 def main():
     """Fonction principale pour démarrer le bot et le serveur web."""
