@@ -28,7 +28,7 @@ bot = commands.Bot(command_prefix='hs!', intents=intents)
 # --- Constantes de Pagination ---
 BOOKS_PER_PAGE = 10 # 10 éléments par page
 
-# --- Sources de la Bibliographie (NOUVEAU) ---
+# --- Sources de la Bibliographie ---
 BIBLIO_SOURCES = "• Site officiel de la mosquée de Médine\n• Site officiel du gouvernement Saoudien"
 
 # --- Classe View pour la Sélection de Langue (inchangée) ---
@@ -79,6 +79,7 @@ class LanguageSelect(ui.View):
 
     @ui.button(label="ENG", style=discord.ButtonStyle.secondary, emoji="🇬🇧")
     async def english_button(self, interaction: discord.Interaction, button: ui.Button):
+        self.language = "ENG"
         self.language = "ENG"
         if not self.check_author(interaction): return
         await self.show_command_result(interaction)
@@ -252,7 +253,7 @@ def get_hadith_embed(lang: str) -> discord.Embed:
 
 def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages: int) -> discord.Embed:
     """Génère l'embed pour une page spécifique de la liste de livres."""
-    global BOOKS_PER_PAGE # Nécessaire pour l'accès
+    global BOOKS_PER_PAGE 
     
     start_index = page_num * BOOKS_PER_PAGE
     end_index = start_index + BOOKS_PER_PAGE
@@ -268,9 +269,10 @@ def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages
     # Message d'instruction + sources
     # Si c'est la première page, on ajoute la description des sources
     if page_num == 0:
+        # Ajout de la description des sources en premier
         header_text = f"**{BIBLIO_SOURCES}**\n\n**Copiez le lien et collez-le si cela ne fonctionne pas**\n\n"
     else:
-        # Pour les pages suivantes, seulement l'instruction (ou rien si page vide)
+        # Pour les pages suivantes
         header_text = "**Copiez le lien et collez-le si cela ne fonctionne pas**\n\n"
 
 
@@ -306,10 +308,7 @@ class BookBrowser(ui.View):
         self.current_page = 0
         self.message: Optional[discord.Message] = None 
         
-        # Si la liste des livres n'est pas un multiple de BOOKS_PER_PAGE, et si 
-        # l'utilisateur a demandé une page vide, on s'assure d'avoir au moins 2 pages.
-        # Si total_books = 9 et BOOKS_PER_PAGE = 10, total_pages = 1.
-        # Pour forcer une 2e page vide, on s'assure d'avoir au moins 2 pages si total_pages = 1
+        # Pour forcer une 2e page vide si la liste n'est pas remplie
         if self.total_pages < 2 and self.total_books > 0:
             self.total_pages = 2 
         
@@ -451,12 +450,6 @@ async def book(ctx: commands.Context):
 
     if not books:
         await ctx.send("❌ Aucun livre trouvé ou le fichier **book_fr.txt** est vide/mal formaté.")
-        return
-
-    # Calcul des pages. Le constructeur BookBrowser gère l'ajout d'une page vide si nécessaire.
-    total_pages_initial = math.ceil(len(books) / BOOKS_PER_PAGE)
-    if total_pages_initial == 0:
-        await ctx.send("❌ Le fichier **book_fr.txt** est vide ou mal formaté.")
         return
 
     # 1. Créer la vue du navigateur (gère total_pages > 1 si total_books > 0)
