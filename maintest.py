@@ -266,7 +266,7 @@ def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages
         description_list += f"**{i}.** [{title}]({link})\n"
 
     # Message d'instruction + sources
-    # L'instruction est maintenant en ITALIQUE
+    # L'instruction est en ITALIQUE
     instruction_text = "*Copiez le lien et collez-le si cela ne fonctionne pas*"
     
     if page_num == 0:
@@ -387,7 +387,7 @@ class BookBrowser(ui.View):
             await interaction.response.edit_message(view=self) 
 
 # ----------------------------------------------------
-# --- Événements et Commandes du Bot (inchangés) ---
+# --- Événements et Commandes du Bot (MODIFIÉ) ---
 # ----------------------------------------------------
 
 @bot.event
@@ -399,14 +399,7 @@ async def on_ready():
     logger.info(f'Prefix: hs!')
 
 
-@bot.event
-async def on_message(message):
-    """
-    Gestionnaire de messages.
-    """
-    if message.author == bot.user:
-        return
-    await bot.process_commands(message) 
+# NOTE : La fonction on_message a été supprimée pour éviter le double dispatch.
 
 async def send_language_select(ctx: commands.Context, command_name: str):
     """Fonction utilitaire pour démarrer la vue de sélection de langue."""
