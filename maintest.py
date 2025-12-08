@@ -6,6 +6,10 @@ import logging
 import random
 from typing import List, Tuple, Optional, Dict, Any
 import math
+# --- Ajouts pour le serveur web ---
+from flask import Flask
+from threading import Thread
+# ---------------------------------
 
 # --- Configuration du Logger ---
 logging.basicConfig(level=logging.INFO, 
@@ -24,7 +28,7 @@ bot = commands.Bot(command_prefix='hs!', intents=intents)
 # --- Constantes de Pagination ---
 BOOKS_PER_PAGE = 5 
 
-# --- Classe View pour la Sélection de Langue (Légèrement modifiée pour le timeout) ---
+# --- Classe View pour la Sélection de Langue ---
 
 class LanguageSelect(ui.View):
     """Vue interactive pour permettre à l'utilisateur de sélectionner une langue (FR/ENG)."""
@@ -41,10 +45,9 @@ class LanguageSelect(ui.View):
             item.disabled = True
         
         try:
-            # Assurez-vous d'éditer le message si la vue est toujours attachée
             await self.message.edit(view=self)
         except (discord.NotFound, AttributeError, discord.HTTPException):
-            pass # Le message a peut-être été supprimé ou n'a pas été stocké
+            pass 
 
     # Ajoutez cette méthode pour stocker le message d'interaction initial
     async def start_interaction(self, ctx: commands.Context):
@@ -61,7 +64,6 @@ class LanguageSelect(ui.View):
         if interaction.user != self.ctx.author:
             error_message = "This is not your command! / Ce n'est pas ta commande!"
             if not interaction.response.is_done():
-                # Utilisez l'envoi éphémère si possible
                 interaction.response.send_message(error_message, ephemeral=True)
             return False
         return True
@@ -165,7 +167,7 @@ def get_books_fr(file_path: str = "book_fr.txt") -> List[Tuple[str, str]] | None
         return None
 
 # --- Fonctions de Génération d'Embeds (inchangées) ---
-# ... (get_commands_embed, get_info_embed, get_hadith_embed) ...
+
 def get_commands_embed(lang: str) -> discord.Embed:
     """Génère l'embed de la liste des commandes."""
     if lang == "FR":
@@ -279,7 +281,7 @@ class BookBrowser(ui.View):
         self.total_books = len(books)
         self.total_pages = math.ceil(self.total_books / BOOKS_PER_PAGE)
         self.current_page = 0
-        self.message: Optional[discord.Message] = None # Ajout du type hint pour le message
+        self.message: Optional[discord.Message] = None 
         
         self.update_buttons()
 
@@ -298,7 +300,7 @@ class BookBrowser(ui.View):
         if interaction.user != self.ctx.author:
             error_message = "This is not your command! / Ce n'est pas ta commande!"
             if not interaction.response.is_done():
-                 interaction.response.send_message(error_message, ephemeral=True)
+                   interaction.response.send_message(error_message, ephemeral=True)
             return False
         return True
 
@@ -339,7 +341,7 @@ class BookBrowser(ui.View):
             embed = get_book_page_embed(self.books, self.current_page, self.total_pages)
             await interaction.response.edit_message(embed=embed, view=self)
         else:
-            await interaction.response.edit_message(view=self) # Mise à jour de la vue sans changer l'embed
+            await interaction.response.edit_message(view=self) 
 
 
     @ui.button(style=discord.ButtonStyle.primary, emoji="➡️")
@@ -352,13 +354,12 @@ class BookBrowser(ui.View):
             embed = get_book_page_embed(self.books, self.current_page, self.total_pages)
             await interaction.response.edit_message(embed=embed, view=self)
         else:
-            await interaction.response.edit_message(view=self) # Mise à jour de la vue sans changer l'embed
+            await interaction.response.edit_message(view=self) 
 
 # ----------------------------------------------------
-# --- Événements et Commandes du Bot (Mise à Jour) ---
+# --- Événements et Commandes du Bot ---
 # ----------------------------------------------------
 
-# (on_ready et on_message restent inchangés)
 @bot.event
 async def on_ready():
     """Se déclenche lorsque le bot est prêt."""
@@ -375,9 +376,8 @@ async def on_message(message):
     """
     if message.author == bot.user:
         return
-    await bot.process_commands(message) # Nécessaire pour traiter les commandes
+    await bot.process_commands(message) 
 
-# (send_language_select est remplacé par LanguageSelect.start_interaction)
 async def send_language_select(ctx: commands.Context, command_name: str):
     """Fonction utilitaire pour démarrer la vue de sélection de langue."""
     view = LanguageSelect(command_name, ctx)
@@ -416,10 +416,6 @@ async def hadith(ctx: commands.Context):
 async def book(ctx: commands.Context):
     """
     Affiche une liste de livres islamiques en français avec pagination.
-    Fonctionne comme suit :
-    1. Lit les livres depuis 'book_fr.txt'.
-    2. Calcule les pages.
-    3. Envoie la première page avec les boutons de navigation (BookBrowser).
     """
     books = get_books_fr()
 
@@ -442,19 +438,42 @@ async def book(ctx: commands.Context):
     # 3. Envoyer le message et stocker le message dans l'objet View
     view.message = await ctx.send(embed=first_page_embed, view=view)
 
+# ----------------------------------------------------
+# --- Fonctions pour le Serveur Web (Keep-Alive) ---
+# ----------------------------------------------------
 
-# --- Fonction Principale ---
+def run_web_server():
+    """Démarre une application Flask pour maintenir le bot en vie."""
+    app = Flask('')
+    
+    @app.route('/')
+    def home():
+        return "Bot est en ligne !"
+    
+    # IMPORTANT : Utilise le port attribué par Render (ou 8080 par défaut)
+    port = int(os.environ.get('PORT', 8080))
+    # Flask s'exécute ici. Le mode debug=False est crucial en production.
+    app.run(host='0.0.0.0', port=port, debug=False)
+
+
+# --- Fonction Principale (Modifiée) ---
 
 def main():
-    """Fonction principale pour démarrer le bot."""
+    """Fonction principale pour démarrer le bot et le serveur web."""
     token = os.environ.get('DISCORD_BOT_TOKEN')
     if not token:
         logger.error(
             "DISCORD_BOT_TOKEN non trouvé dans les variables d'environnement! Arrêt du bot.")
         return
-    logger.info("Starting the bot...")
+        
+    # 1. Démarrer le serveur web dans un thread séparé (en arrière-plan)
+    logger.info("Démarrage du serveur web Keep-Alive...")
+    t = Thread(target=run_web_server)
+    t.start()
+    
+    # 2. Lancer le bot Discord (cela doit être la fonction principale)
+    logger.info("Démarrage du bot Discord...")
     try:
-        # Lancement du bot
         bot.run(token)
     except discord.LoginFailure:
         logger.critical("Échec de la connexion: Jeton invalide.")
