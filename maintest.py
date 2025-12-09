@@ -170,10 +170,10 @@ def get_books_fr(file_path: str = "book_fr.txt") -> List[Tuple[str, str]] | None
         logger.error(f"Erreur lors de la lecture du fichier {file_path}: {e}")
         return None
 
-# --- Fonctions de Génération d'Embeds (inchangées) ---
+# --- Fonctions de Génération d'Embeds (MODIFIÉ) ---
 
 def get_commands_embed(lang: str) -> discord.Embed:
-    """Génère l'embed de la liste des commandes."""
+    """Génère l'embed de la liste des commandes. (MODIFIÉ: footer retiré)"""
     if lang == "FR":
         embed = discord.Embed(
             title="Commandes de HadithSahih",
@@ -187,7 +187,6 @@ def get_commands_embed(lang: str) -> discord.Embed:
             (" • hs!info", "*Informations sur le bot*"),
             (" • hs!book", "*Affiche une liste de livres islamiques en français*")
         ]
-        footer_text = "- @n9rs9"
     else:
         embed = discord.Embed(
             title="HadithSahih's Commands",
@@ -201,17 +200,16 @@ def get_commands_embed(lang: str) -> discord.Embed:
             (" • hs!info", "*Bot information*"),
             (" • hs!book", "*Displays a list of Islamic books in French*")
         ]
-        footer_text = "- @n9rs9"
 
     for name, value in commands_list:
         embed.add_field(name=name, value=value, inline=False)
 
-    embed.set_footer(text=footer_text)
+    # Ligne suivante retirée : embed.set_footer(text=footer_text)
     return embed
 
 
 def get_info_embed(lang: str, server_count: int) -> discord.Embed:
-    """Génère l'embed d'information sur le bot."""
+    """Génère l'embed d'information sur le bot. (MODIFIÉ: description et champs ENG)"""
     if lang == "FR":
         embed = discord.Embed(
             title=" • HadithSahih",
@@ -220,10 +218,13 @@ def get_info_embed(lang: str, server_count: int) -> discord.Embed:
         embed.add_field(name="Propriétaire", value="@n9rs9", inline=True)
         embed.add_field(name="Serveurs", value=str(server_count), inline=True)
     else:
+        # Configuration demandée pour le hs!info direct (description FR, champs ENG)
         embed = discord.Embed(
             title=" • HadithSahih",
-            description="Sahih Hadiths for you every day! :books:",
+            # Description FR demandée
+            description="Des Hadiths Sahih pour vous chaque jour ! :books:", 
             color=discord.Color.pink())
+        # Champs ENG demandés
         embed.add_field(name="Owner", value="@n9rs9", inline=True)
         embed.add_field(name="Servers", value=str(server_count), inline=True)
     return embed
@@ -331,7 +332,7 @@ class BookBrowser(ui.View):
         if interaction.user != self.ctx.author:
             error_message = "This is not your command! / Ce n'est pas ta commande!"
             if not interaction.response.is_done():
-                   interaction.response.send_message(error_message, ephemeral=True)
+                    interaction.response.send_message(error_message, ephemeral=True)
             return False
         return True
 
@@ -393,11 +394,15 @@ class BookBrowser(ui.View):
 
 @bot.event
 async def on_ready():
-    """Se déclenche lorsque le bot est prêt."""
+    """Se déclenche lorsque le bot est prêt. (MODIFIÉ: ajout du statut)"""
     logger.info(f'{bot.user} is connected to Discord!')
     logger.info(f'Bot ID: {bot.user.id}')
     logger.info(f'Connected servers: {len(bot.guilds)}')
     logger.info(f'Prefix: hs!')
+    
+    # MODIFICATION : Définir le statut du bot
+    activity = discord.Activity(type=discord.ActivityType.listening, name="hs!commands")
+    await bot.change_presence(status=discord.Status.online, activity=activity)
 
 
 # FONCTION on_message RETIRÉE pour éviter le double dispatch.
@@ -428,8 +433,11 @@ async def ping(ctx: commands.Context):
 
 @bot.command(name='info')
 async def info(ctx: commands.Context):
-    """Affiche les informations du bot avec sélection de langue."""
-    await send_language_select(ctx, "info")
+    """Affiche les informations du bot. (MODIFIÉ: Plus de sélecteur, anglais par défaut)"""
+    # ENVOI DIRECT de l'embed en anglais (lang="ENG")
+    server_count = len(bot.guilds)
+    embed = get_info_embed("ENG", server_count)
+    await ctx.send(embed=embed)
 
 
 @bot.command(name='hadith')
