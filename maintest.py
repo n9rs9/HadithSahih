@@ -31,7 +31,7 @@ BOOKS_PER_PAGE = 10 # 10 éléments par page
 # --- Sources de la Bibliographie ---
 BIBLIO_SOURCES = "• Site officiel de la mosquée de Médine\n• Site officiel du gouvernement Saoudien"
 
-# --- Classe View pour la Sélection de Langue (MAINTENUE) ---
+# --- Classe View pour la Sélection de Langue (MODIFIÉE) ---
 
 class LanguageSelect(ui.View):
     """Vue interactive pour permettre à l'utilisateur de sélectionner une langue (FR/ENG)."""
@@ -52,7 +52,7 @@ class LanguageSelect(ui.View):
         except (discord.NotFound, AttributeError, discord.HTTPException):
             pass 
 
-    # Envoie le message initial et stocke l'objet Message.
+    # MODIFIÉ: Renommé et rendu plus simple
     async def send_initial_message(self):
         """Envoie le message initial et stocke l'objet Message."""
         embed = discord.Embed(
@@ -78,7 +78,6 @@ class LanguageSelect(ui.View):
         if not self.check_author(interaction): return
         await self.show_command_result(interaction)
 
-    # MODIFIÉ: Utilise style=discord.ButtonStyle.secondary (gris/neutre, le plus proche du blanc)
     @ui.button(label="ENG", style=discord.ButtonStyle.secondary, emoji="🇬🇧")
     async def english_button(self, interaction: discord.Interaction, button: ui.Button):
         self.language = "ENG"
@@ -174,7 +173,7 @@ def get_books_fr(file_path: str = "book_fr.txt") -> List[Tuple[str, str]] | None
 # --- Fonctions de Génération d'Embeds (MODIFIÉ) ---
 
 def get_commands_embed(lang: str) -> discord.Embed:
-    """Génère l'embed de la liste des commandes. (Footer retiré)"""
+    """Génère l'embed de la liste des commandes. (MODIFIÉ: footer retiré)"""
     if lang == "FR":
         embed = discord.Embed(
             title="Commandes de HadithSahih",
@@ -210,26 +209,20 @@ def get_commands_embed(lang: str) -> discord.Embed:
 
 
 def get_info_embed(lang: str, server_count: int) -> discord.Embed:
-    """Génère l'embed d'information sur le bot. (MODIFIÉ: ajout description ENG)"""
-    
-    # Description pour hs!info (avec les deux langues)
-    mixed_description = (
-        "Des Hadiths Sahih pour vous chaque jour ! :books:\n"
-        "Sahih Hadiths for you every day! :books:"
-    )
-    
+    """Génère l'embed d'information sur le bot. (MODIFIÉ: description et champs ENG)"""
     if lang == "FR":
         embed = discord.Embed(
             title=" • HadithSahih",
-            description=mixed_description,
+            description="Des Hadiths Sahih pour vous chaque jour ! :books:",
             color=discord.Color.pink())
         embed.add_field(name="Propriétaire", value="@n9rs9", inline=True)
         embed.add_field(name="Serveurs", value=str(server_count), inline=True)
     else:
-        # Configuration demandée pour le hs!info direct et la sélection ENG
+        # Configuration demandée pour le hs!info direct (description FR, champs ENG)
         embed = discord.Embed(
             title=" • HadithSahih",
-            description=mixed_description,
+            # Description FR demandée
+            description="Des Hadiths Sahih pour vous chaque jour ! :books:", 
             color=discord.Color.pink())
         # Champs ENG demandés
         embed.add_field(name="Owner", value="@n9rs9", inline=True)
@@ -401,13 +394,13 @@ class BookBrowser(ui.View):
 
 @bot.event
 async def on_ready():
-    """Se déclenche lorsque le bot est prêt. (Statut défini)"""
+    """Se déclenche lorsque le bot est prêt. (MODIFIÉ: ajout du statut)"""
     logger.info(f'{bot.user} is connected to Discord!')
     logger.info(f'Bot ID: {bot.user.id}')
     logger.info(f'Connected servers: {len(bot.guilds)}')
     logger.info(f'Prefix: hs!')
     
-    # Définir le statut du bot
+    # MODIFICATION : Définir le statut du bot
     activity = discord.Activity(type=discord.ActivityType.listening, name="hs!commands")
     await bot.change_presence(status=discord.Status.online, activity=activity)
 
@@ -418,7 +411,7 @@ async def on_ready():
 async def send_language_select(ctx: commands.Context, command_name: str):
     """Fonction utilitaire pour démarrer la vue de sélection de langue."""
     view = LanguageSelect(command_name, ctx)
-    # Utilise la méthode mise à jour
+    # MODIFIÉ : Utilise la méthode mise à jour
     await view.send_initial_message()
 
 
@@ -440,8 +433,8 @@ async def ping(ctx: commands.Context):
 
 @bot.command(name='info')
 async def info(ctx: commands.Context):
-    """Affiche les informations du bot (sans sélecteur, en ENG/FR)."""
-    # ENVOI DIRECT de l'embed en anglais (lang="ENG" pour les champs)
+    """Affiche les informations du bot. (MODIFIÉ: Plus de sélecteur, anglais par défaut)"""
+    # ENVOI DIRECT de l'embed en anglais (lang="ENG")
     server_count = len(bot.guilds)
     embed = get_info_embed("ENG", server_count)
     await ctx.send(embed=embed)
