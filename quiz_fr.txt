@@ -6,5 +6,5 @@
 [Qui est le premier homme créé ?] [Adam] [Nouh] [Ibrahim]
 [Quelle est la direction de la prière ?] [La Kaaba] [Al-Aqsa] [Le Ciel]
 [Quel ange a transmis le Coran ?] [Jibril] [Mikail] [Israfil]
-[Quel prophète a été avalé par un poisson ?] [Younous] [Moussa] [Youssouf]
+[Quel prophète a été avalé par une baleine ?] [Yunus] [Moussa] [Yusuf]
 [Quelle sourate protège du Dajjal (l'Antéchrist) ?] [Al-Kahf] [Al-Moulk] [Yasin]
