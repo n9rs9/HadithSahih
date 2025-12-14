@@ -82,6 +82,51 @@ def get_books(file_path: str) -> List[Tuple[str, str]] | None:
         logger.error(f"Erreur lecture {file_path}: {e}")
         return None
 
+def get_quiz_questions(file_path: str) -> List[Dict[str, Any]] | None:
+    """
+    Lit le fichier de quiz et retourne une liste de questions.
+    Format attendu : [Question] [Bonne réponse] [Mauvaise 1] [Mauvaise 2]
+    """
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            questions = []
+            for line in f:
+                line = line.strip()
+                if not line or not line.startswith('['):
+                    continue
+                
+                parts = []
+                current_pos = 0
+                
+                # Parser tous les crochets
+                while True:
+                    start = line.find('[', current_pos)
+                    if start == -1:
+                        break
+                    end = line.find(']', start + 1)
+                    if end == -1:
+                        break
+                    parts.append(line[start + 1:end].strip())
+                    current_pos = end + 1
+                
+                # Vérifier qu'on a bien 4 parties (question + 3 réponses)
+                if len(parts) == 4:
+                    question_data = {
+                        "question": parts[0],
+                        "correct": parts[1],
+                        "wrong1": parts[2],
+                        "wrong2": parts[3]
+                    }
+                    questions.append(question_data)
+            
+            return questions if questions else None
+    except FileNotFoundError:
+        logger.error(f"Fichier non trouvé: {file_path}")
+        return None
+    except Exception as e:
+        logger.error(f"Erreur lecture quiz {file_path}: {e}")
+        return None
+
 # --- Fonctions de Génération d'Embeds ---
 
 def get_commands_embed(lang: str) -> discord.Embed:
@@ -94,6 +139,7 @@ def get_commands_embed(lang: str) -> discord.Embed:
         commands_list = [
             (" • hs!hadith", "*Affiche un hadith sahih aléatoire*"),
             (" • hs!book", "*Affiche une liste de livres islamiques*"),
+            (" • hs!quiz", "*Lance un quiz sur l'Islam*"),
             (" • hs!commands", "*Toutes les commandes du bot*"),
             (" • hs!ping", "*Vérifie la latence du bot*"),
             (" • hs!info", "*Informations sur le bot*")
@@ -107,6 +153,7 @@ def get_commands_embed(lang: str) -> discord.Embed:
         commands_list = [
             (" • hs!hadith", "*Displays a random Sahih hadith*"),
             (" • hs!book", "*Displays a list of Islamic books*"),
+            (" • hs!quiz", "*Start a quiz about Islam*"),
             (" • hs!commands", "*All commands for this bot*"),
             (" • hs!ping", "*Check the bot's latency*"),
             (" • hs!info", "*Bot information*")
@@ -130,11 +177,11 @@ def get_hadith_embed(lang: str) -> discord.Embed:
     if lang == "FR":
         hadith_text = get_random_hadith("hadiths_fr.txt")
         embed = discord.Embed(title="✨ Hadith Sahih Aléatoire", description=hadith_text, color=discord.Color.blue())
-        footer_text = "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī 'ilman - Mon Seigneur, augmente ma connaissance"
+        footer_text = "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī ʿilman - Mon Seigneur, augmente ma connaissance"
     else:
         hadith_text = get_random_hadith("hadiths_eng.txt")
         embed = discord.Embed(title="✨ Random Sahih Hadith", description=hadith_text, color=discord.Color.blue())
-        footer_text = "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī 'ilman - My Lord, increase me in knowledge"
+        footer_text = "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī ʿilman - My Lord, increase me in knowledge"
     
     embed.set_footer(text=footer_text)
     return embed
@@ -261,9 +308,137 @@ class BookBrowser(ui.View):
             embed = get_book_page_embed(self.books, self.current_page, self.total_pages, self.lang)
             await interaction.response.edit_message(embed=embed, view=self)
         else:
-            await interaction.response.edit_message(view=self) 
+            await interaction.response.edit_message(view=self)
 
-# --- Vue Sélection de Langue (MODIFIÉE pour gérer Book) ---
+# --- Vue Quiz ---
+
+class QuizView(ui.View):
+    """Vue interactive pour le quiz avec 3 questions."""
+
+    def __init__(self, ctx: commands.Context, questions: List[Dict[str, Any]], lang: str):
+        super().__init__(timeout=180)
+        self.ctx = ctx
+        self.questions = questions
+        self.lang = lang
+        self.current_question = 0
+        self.score = 0
+        self.message: Optional[discord.Message] = None
+        
+        # Mélanger les réponses pour la première question
+        self.shuffle_answers()
+        self.create_buttons()
+
+    def shuffle_answers(self):
+        """Mélange les réponses pour la question actuelle."""
+        q = self.questions[self.current_question]
+        self.answers = [q["correct"], q["wrong1"], q["wrong2"]]
+        random.shuffle(self.answers)
+        self.correct_answer = q["correct"]
+
+    def create_buttons(self):
+        """Crée les boutons de réponse."""
+        self.clear_items()
+        
+        for i, answer in enumerate(self.answers):
+            button = ui.Button(
+                label=answer,
+                style=discord.ButtonStyle.primary,
+                custom_id=f"answer_{i}"
+            )
+            button.callback = self.create_answer_callback(answer)
+            self.add_item(button)
+
+    def create_answer_callback(self, answer: str):
+        """Crée un callback pour un bouton de réponse."""
+        async def callback(interaction: discord.Interaction):
+            if interaction.user != self.ctx.author:
+                msg = "Ce n'est pas ton quiz!" if self.lang == "FR" else "This is not your quiz!"
+                await interaction.response.send_message(msg, ephemeral=True)
+                return
+            
+            # Vérifier la réponse
+            if answer == self.correct_answer:
+                self.score += 1
+            
+            # Passer à la question suivante
+            self.current_question += 1
+            
+            if self.current_question < len(self.questions):
+                # Encore des questions
+                self.shuffle_answers()
+                self.create_buttons()
+                embed = self.get_question_embed()
+                await interaction.response.edit_message(embed=embed, view=self)
+            else:
+                # Fin du quiz
+                embed = self.get_result_embed()
+                self.clear_items()
+                await interaction.response.edit_message(embed=embed, view=self)
+        
+        return callback
+
+    def get_question_embed(self) -> discord.Embed:
+        """Génère l'embed pour la question actuelle."""
+        q = self.questions[self.current_question]
+        
+        if self.lang == "FR":
+            title = f"📝 Quiz - Question {self.current_question + 1}/3"
+            color = discord.Color.green()
+        else:
+            title = f"📝 Quiz - Question {self.current_question + 1}/3"
+            color = discord.Color.green()
+        
+        embed = discord.Embed(
+            title=title,
+            description=f"**{q['question']}**",
+            color=color
+        )
+        return embed
+
+    def get_result_embed(self) -> discord.Embed:
+        """Génère l'embed du résultat final."""
+        if self.lang == "FR":
+            title = "🏆 Résultat du Quiz"
+            description = f"**Score : {self.score}/3**"
+            
+            if self.score == 3:
+                message = "Parfait ! Macha Allah ! 🌟"
+            elif self.score == 2:
+                message = "Très bien ! Continue comme ça ! 👍"
+            elif self.score == 1:
+                message = "Pas mal ! Tu peux faire mieux ! 💪"
+            else:
+                message = "Continue d'apprendre ! 📚"
+        else:
+            title = "🏆 Quiz Result"
+            description = f"**Score: {self.score}/3**"
+            
+            if self.score == 3:
+                message = "Perfect! Masha Allah! 🌟"
+            elif self.score == 2:
+                message = "Very good! Keep it up! 👍"
+            elif self.score == 1:
+                message = "Not bad! You can do better! 💪"
+            else:
+                message = "Keep learning! 📚"
+        
+        embed = discord.Embed(
+            title=title,
+            description=f"{description}\n\n{message}",
+            color=discord.Color.gold()
+        )
+        return embed
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        try:
+            if self.message:
+                await self.message.edit(view=self)
+        except:
+            pass
+
+# --- Vue Sélection de Langue (MODIFIÉE pour gérer Book et Quiz) ---
 
 class LanguageSelect(ui.View):
     def __init__(self, command_name: str, ctx: commands.Context):
@@ -330,6 +505,30 @@ class LanguageSelect(ui.View):
             await interaction.response.edit_message(embed=first_page_embed, view=browser_view)
             return
 
+        # Cas spécial pour QUIZ
+        if self.command_name == "quiz":
+            filename = "quiz_fr.txt" if self.language == "FR" else "quiz_eng.txt"
+            all_questions = get_quiz_questions(filename)
+            
+            if not all_questions or len(all_questions) < 3:
+                err_msg = "Erreur: Pas assez de questions disponibles." if self.language == "FR" else "Error: Not enough questions available."
+                await interaction.response.edit_message(content=err_msg, embed=None, view=None)
+                return
+            
+            # Sélectionner 3 questions aléatoires
+            selected_questions = random.sample(all_questions, 3)
+            
+            # Désactiver les boutons de langue
+            for item in self.children: item.disabled = True
+            
+            # Créer la vue du quiz
+            quiz_view = QuizView(self.ctx, selected_questions, self.language)
+            first_question_embed = quiz_view.get_question_embed()
+            
+            quiz_view.message = self.message
+            await interaction.response.edit_message(embed=first_question_embed, view=quiz_view)
+            return
+
         # Pour les autres commandes (Info, Hadith, Commands), on génère juste un Embed
         for item in self.children: item.disabled = True
         
@@ -383,6 +582,11 @@ async def hadith(ctx: commands.Context):
 async def book(ctx: commands.Context):
     # Lance maintenant le sélecteur de langue au lieu de charger directement le FR
     await send_language_select(ctx, "book")
+
+@bot.command(name="quiz")
+async def quiz(ctx: commands.Context):
+    """Lance un quiz de 3 questions aléatoires."""
+    await send_language_select(ctx, "quiz")
 
 # --- Serveur Web ---
 
