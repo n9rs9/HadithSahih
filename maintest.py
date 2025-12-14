@@ -29,7 +29,7 @@ BOOKS_PER_PAGE = 10
 # --- Sources de la Bibliographie (Dictionnaire par langue) ---
 BIBLIO_SOURCES = {
     "FR": "• Site officiel de la mosquée de Médine\n• Site officiel du gouvernement Saoudien",
-    "ENG": "• Official website of the Prophet's Mosque\n• Official website of the Saudi Government"
+    "ENG": "• Official website of the Prophet's Mosque (Medina)\n• Official website of the Saudi Government"
 }
 
 # --- Fonctions Utilitaires de Fichier ---
