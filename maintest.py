@@ -322,6 +322,7 @@ class QuizView(ui.View):
         self.lang = lang
         self.current_question = 0
         self.score = 0
+        self.history = []  # NOUVEAU : Pour stocker le résumé
         self.message: Optional[discord.Message] = None
         
         # Mélanger les réponses pour la première question
@@ -357,9 +358,18 @@ class QuizView(ui.View):
                 return
             
             # Vérifier la réponse
-            if answer == self.correct_answer:
+            is_correct = (answer == self.correct_answer)
+            if is_correct:
                 self.score += 1
             
+            # NOUVEAU : Sauvegarder le résultat pour le résumé final
+            current_q_text = self.questions[self.current_question]["question"]
+            self.history.append({
+                "question": current_q_text,
+                "correct_answer": self.correct_answer,
+                "is_correct": is_correct
+            })
+
             # Passer à la question suivante
             self.current_question += 1
             
@@ -381,12 +391,9 @@ class QuizView(ui.View):
         """Génère l'embed pour la question actuelle."""
         q = self.questions[self.current_question]
         
-        if self.lang == "FR":
-            title = f"📝 Quiz - Question {self.current_question + 1}/3"
-            color = discord.Color.green()
-        else:
-            title = f"📝 Quiz - Question {self.current_question + 1}/3"
-            color = discord.Color.green()
+        # Titre et couleur uniformes
+        title = f"📝 Quiz - Question {self.current_question + 1}/3"
+        color = discord.Color.green()
         
         embed = discord.Embed(
             title=title,
@@ -396,10 +403,13 @@ class QuizView(ui.View):
         return embed
 
     def get_result_embed(self) -> discord.Embed:
-        """Génère l'embed du résultat final."""
+        """Génère l'embed du résultat final avec le résumé."""
+        
+        # 1. Définition des textes selon la langue
         if self.lang == "FR":
             title = "🏆 Résultat du Quiz"
-            description = f"**Score : {self.score}/3**"
+            score_text = f"**Score : {self.score}/3**"
+            summary_title = "📝 Résumé des questions"
             
             if self.score == 3:
                 message = "Parfait ! Macha Allah ! 🌟"
@@ -411,7 +421,8 @@ class QuizView(ui.View):
                 message = "Continue d'apprendre ! 📚"
         else:
             title = "🏆 Quiz Result"
-            description = f"**Score: {self.score}/3**"
+            score_text = f"**Score: {self.score}/3**"
+            summary_title = "📝 Questions Summary"
             
             if self.score == 3:
                 message = "Perfect! Masha Allah! 🌟"
@@ -422,11 +433,27 @@ class QuizView(ui.View):
             else:
                 message = "Keep learning! 📚"
         
+        # 2. Création de l'Embed de base
         embed = discord.Embed(
             title=title,
-            description=f"{description}\n\n{message}",
+            description=score_text,
             color=discord.Color.gold()
         )
+
+        # 3. Construction du résumé (Format demandé)
+        summary_content = ""
+        for item in self.history:
+            emoji = ":white_check_mark:" if item["is_correct"] else ":no_entry:"
+            # Format: Emoji 'Question' : 'Bonne réponse'
+            summary_content += f"{emoji} **{item['question']}** : {item['correct_answer']}\n"
+
+        # Ajout du Field Résumé
+        embed.add_field(name=summary_title, value=summary_content, inline=False)
+
+        # 4. Ajout du message d'encouragement (dans un field séparé pour être en bas)
+        # \u200b est un caractère invisible pour faire un titre vide
+        embed.add_field(name="\u200b", value=f"*{message}*", inline=False)
+        
         return embed
 
     async def on_timeout(self):
