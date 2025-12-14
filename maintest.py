@@ -4,221 +4,266 @@ from discord import ui
 import os
 import logging
 import random
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Any
 import math
+# --- Ajouts pour le serveur web ---
 from flask import Flask
 from threading import Thread
+# ---------------------------------
 
-# --- Logger ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(name)s: %(message)s')
+# --- Configuration du Logger ---
+logging.basicConfig(level=logging.INFO, 
+                    format='%(asctime)s:%(levelname)s:%(name)s: %(message)s')
 logger = logging.getLogger('HadithSahih')
 
-# --- Bot Setup ---
+# --- Configuration du Bot et des Intents ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
+
 bot = commands.Bot(command_prefix='hs!', intents=intents)
 
-# --- Constantes ---
-BOOKS_PER_PAGE = 10
+# --- Constantes de Pagination ---
+BOOKS_PER_PAGE = 10 
+
+# --- Sources de la Bibliographie (Dictionnaire par langue) ---
 BIBLIO_SOURCES = {
     "FR": "• Site officiel de la mosquée de Médine\n• Site officiel du gouvernement Saoudien",
-    "ENG": "• Official website of the Prophet's Mosque\n• Official website of the Saudi Government"
+    "ENG": "• Official website of the Prophet's Mosque (Medina)\n• Official website of the Saudi Government"
 }
 
-# --- Lecture Fichiers ---
+# --- Fonctions Utilitaires de Fichier ---
 
 def get_random_hadith(file_path: str = "hadiths_eng.txt") -> str:
+    """Lit un fichier et renvoie une ligne aléatoire."""
     try:
         with open(file_path, 'r', encoding='utf-8') as f:
             hadiths = [h.strip() for h in f.readlines() if h.strip()]
             return random.choice(hadiths) if hadiths else "Empty file."
-    except Exception: return "Error reading file."
+    except FileNotFoundError:
+        return f"Error: {file_path} not found."
+    except Exception as e:
+        return "An error occurred."
 
+# MODIFIÉ : Fonction générique pour lire n'importe quel fichier de livres
 def get_books(file_path: str) -> List[Tuple[str, str]] | None:
+    """
+    Lit le fichier des livres. 
+    Format attendu : [LIEN] [TITRE]
+    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             books = []
             for line in f:
-                if not line.startswith('['): continue
+                line = line.strip()
+                if not line or not line.startswith('[') or ']' not in line:
+                    continue
                 try:
+                    # Trouver le lien (premier crochet)
                     link_end = line.find(']')
                     link = line[1:link_end].strip()
+                    
+                    # Trouver le titre (deuxième crochet)
                     title_start = line.find('[', link_end + 1)
                     title_end = line.find(']', title_start + 1)
-                    if link and title_start != -1:
+
+                    if link and title_start != -1 and title_end != -1:
                         title = line[title_start + 1:title_end].strip()
-                        books.append((title, link))
-                except: continue
+                        if title:
+                            books.append((title, link))
+                except Exception as e:
+                    logger.warning(f"Ligne ignorée : {line}. Erreur: {e}")
+                    continue
             return books
-    except: return None
-
-# NOUVEAU : Lecture du Quiz (Question, BonneReponse, Mauvaise1, Mauvaise2)
-def get_quiz_data(file_path: str) -> List[Dict]:
-    questions = []
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or not line.startswith('['): continue
-                
-                # On découpe par les crochets ']'
-                parts = line.split(']')
-                # On nettoie les '[' restants et les espaces
-                cleaned_parts = [p.replace('[', '').strip() for p in parts if p.strip()]
-                
-                # Il nous faut au moins 4 parties : Q, Bonne, Mauvaise1, Mauvaise2
-                if len(cleaned_parts) >= 4:
-                    questions.append({
-                        "question": cleaned_parts[0],
-                        "correct": cleaned_parts[1],
-                        "wrongs": [cleaned_parts[2], cleaned_parts[3]]
-                    })
+    except FileNotFoundError:
+        logger.error(f"Fichier non trouvé: {file_path}")
+        return None
     except Exception as e:
-        logger.error(f"Erreur quiz: {e}")
-    return questions
+        logger.error(f"Erreur lecture {file_path}: {e}")
+        return None
 
-# --- Moteur du Jeu Quiz ---
+# --- Fonctions de Génération d'Embeds ---
 
-class QuizButton(ui.Button):
-    """Bouton individuel pour une réponse."""
-    def __init__(self, label: str, is_correct: bool):
-        super().__init__(label=label, style=discord.ButtonStyle.secondary)
-        self.is_correct = is_correct
+def get_commands_embed(lang: str) -> discord.Embed:
+    if lang == "FR":
+        embed = discord.Embed(
+            title="Commandes de HadithSahih",
+            description="Toutes les commandes de ce bot :satellite:",
+            color=discord.Color.purple()
+        )
+        commands_list = [
+            (" • hs!hadith", "*Affiche un hadith sahih aléatoire*"),
+            (" • hs!book", "*Affiche une liste de livres islamiques*"),
+            (" • hs!commands", "*Toutes les commandes du bot*"),
+            (" • hs!ping", "*Vérifie la latence du bot*"),
+            (" • hs!info", "*Informations sur le bot*")
+        ]
+    else:
+        embed = discord.Embed(
+            title="HadithSahih's Commands",
+            description="All commands for this bot :satellite:",
+            color=discord.Color.purple()
+        )
+        commands_list = [
+            (" • hs!hadith", "*Displays a random Sahih hadith*"),
+            (" • hs!book", "*Displays a list of Islamic books*"),
+            (" • hs!commands", "*All commands for this bot*"),
+            (" • hs!ping", "*Check the bot's latency*"),
+            (" • hs!info", "*Bot information*")
+        ]
 
-    async def callback(self, interaction: discord.Interaction):
-        # On délègue la logique à la Vue principale
-        view: QuizGame = self.view
-        if interaction.user != view.ctx.author:
-            return await interaction.response.send_message("Ce n'est pas votre partie !", ephemeral=True)
-        
-        await view.handle_answer(interaction, self.is_correct)
-
-class QuizGame(ui.View):
-    """Vue principale qui gère le déroulement du jeu."""
-    def __init__(self, ctx, questions: List[Dict], lang: str):
-        super().__init__(timeout=120)
-        self.ctx = ctx
-        self.questions = questions
-        self.lang = lang
-        self.score = 0
-        self.index = 0
-        self.total = len(questions)
-        
-        # Mélanger l'ordre des questions au début
-        random.shuffle(self.questions)
-        
-        # Charger la première question
-        self.setup_question()
-
-    def setup_question(self):
-        """Prépare les boutons pour la question actuelle."""
-        self.clear_items() # Enlever les anciens boutons
-        
-        current_q = self.questions[self.index]
-        correct_answer = current_q["correct"]
-        wrong_answers = current_q["wrongs"]
-        
-        # Créer la liste des options (1 bonne + 2 mauvaises)
-        options = [{"label": correct_answer, "correct": True}]
-        for wa in wrong_answers:
-            options.append({"label": wa, "correct": False})
-        
-        # Mélanger l'ordre des boutons pour que la bonne réponse ne soit pas toujours la 1ère
-        random.shuffle(options)
-        
-        # Créer les boutons
-        for opt in options:
-            self.add_item(QuizButton(label=opt["label"], is_correct=opt["correct"]))
-
-    def get_embed(self, finished=False):
-        """Génère l'embed d'affichage."""
-        if finished:
-            title = "🏆 Quiz Terminé !" if self.lang == "FR" else "🏆 Quiz Finished!"
-            desc = f"Score final : **{self.score}/{self.total}**"
-            color = discord.Color.gold()
-            return discord.Embed(title=title, description=desc, color=color)
-        
-        current_q = self.questions[self.index]
-        title = "❓ Quiz Islam"
-        
-        # Compteur de score en temps réel
-        score_text = f"Score: {self.score}/{self.index}"
-        progress_text = f"Question: {self.index + 1}/{self.total}"
-        
-        embed = discord.Embed(title=title, description=f"**{current_q['question']}**", color=discord.Color.blue())
-        embed.set_footer(text=f"{progress_text} | {score_text}")
-        return embed
-
-    async def handle_answer(self, interaction: discord.Interaction, is_correct: bool):
-        if is_correct:
-            self.score += 1
-        
-        self.index += 1
-        
-        if self.index < self.total:
-            # S'il reste des questions
-            self.setup_question()
-            await interaction.response.edit_message(embed=self.get_embed(), view=self)
-        else:
-            # Fin du jeu
-            for child in self.children:
-                child.disabled = True
-            await interaction.response.edit_message(embed=self.get_embed(finished=True), view=None)
-
-# --- Classes Affichage Classiques ---
-
-def get_book_page_embed(books, page_num, total_pages, lang):
-    global BOOKS_PER_PAGE 
-    start = page_num * BOOKS_PER_PAGE
-    end = start + BOOKS_PER_PAGE
-    page_books = books[start:end]
-    desc = ""
-    for i, (t, l) in enumerate(page_books, start=start + 1): desc += f"**{i}.** [{t}]({l})\n"
-    
-    sources = BIBLIO_SOURCES["FR"] if lang == "FR" else BIBLIO_SOURCES["ENG"]
-    instr = "*Copiez le lien...*" if lang == "FR" else "*Copy the link...*"
-    title = "📚 Bibliographie" if lang == "FR" else "📚 Bibliography"
-    header = f"**{sources}**\n\n{instr}\n\n" if page_num == 0 else f"{instr}\n\n"
-    full = header + (desc if desc else ("Fin." if lang=="FR" else "End."))
-    
-    embed = discord.Embed(title=title, description=full, color=discord.Color.gold())
-    embed.set_footer(text=f"Page {page_num + 1}/{total_pages}")
+    for name, value in commands_list:
+        embed.add_field(name=name, value=value, inline=False)
     return embed
 
+def get_info_embed(lang: str, server_count: int) -> discord.Embed:
+    # Toujours description FR et champs ENG comme demandé
+    embed = discord.Embed(
+        title=" • HadithSahih",
+        description="Des Hadiths Sahih pour vous chaque jour ! :books:", 
+        color=discord.Color.pink())
+    embed.add_field(name="Owner", value="@n9rs9", inline=True)
+    embed.add_field(name="Servers", value=str(server_count), inline=True)
+    return embed
+
+def get_hadith_embed(lang: str) -> discord.Embed:
+    if lang == "FR":
+        hadith_text = get_random_hadith("hadiths_fr.txt")
+        embed = discord.Embed(title="✨ Hadith Sahih Aléatoire", description=hadith_text, color=discord.Color.blue())
+        footer_text = "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī 'ilman - Mon Seigneur, augmente ma connaissance"
+    else:
+        hadith_text = get_random_hadith("hadiths_eng.txt")
+        embed = discord.Embed(title="✨ Random Sahih Hadith", description=hadith_text, color=discord.Color.blue())
+        footer_text = "رَبِّ زِدْنِي عِلْمًا - Rabbi zidnī 'ilman - My Lord, increase me in knowledge"
+    
+    embed.set_footer(text=footer_text)
+    return embed
+
+# --- Pagination des Livres (MODIFIÉ pour la langue) ---
+
+def get_book_page_embed(books: List[Tuple[str, str]], page_num: int, total_pages: int, lang: str) -> discord.Embed:
+    """Génère l'embed pour une page de livres avec gestion de langue."""
+    global BOOKS_PER_PAGE 
+    
+    start_index = page_num * BOOKS_PER_PAGE
+    end_index = start_index + BOOKS_PER_PAGE
+    page_books = books[start_index:end_index]
+
+    description_list = ""
+    for i, (title, link) in enumerate(page_books, start=start_index + 1):
+        description_list += f"**{i}.** [{title}]({link})\n"
+
+    # Textes traduits
+    if lang == "FR":
+        title_text = "📚 Bibliographie"
+        instruction = "*Copiez le lien et collez-le si cela ne fonctionne pas*"
+        sources = BIBLIO_SOURCES["FR"]
+        empty_msg = "**Fin de la bibliographie.**" if page_num > 0 else "**Aucun livre trouvé.**"
+        footer_pg = f"Page {page_num + 1}/{total_pages}"
+    else:
+        title_text = "📚 Bibliography"
+        instruction = "*Copy the link and paste it if it doesn't work*"
+        sources = BIBLIO_SOURCES["ENG"]
+        empty_msg = "**End of bibliography.**" if page_num > 0 else "**No books found.**"
+        footer_pg = f"Page {page_num + 1}/{total_pages}"
+
+    if page_num == 0:
+        header_text = f"**{sources}**\n\n{instruction}\n\n"
+    else:
+        header_text = f"{instruction}\n\n"
+
+    full_description = f"{header_text}{description_list}" if description_list else f"{header_text}{empty_msg}"
+    
+    embed = discord.Embed(title=title_text, description=full_description, color=discord.Color.gold())
+    embed.set_footer(text=footer_pg)
+    return embed
+
+
 class BookBrowser(ui.View):
-    def __init__(self, ctx, books, lang):
+    """Vue interactive pour naviguer entre les pages."""
+
+    def __init__(self, ctx: commands.Context, books: List[Tuple[str, str]], lang: str):
         super().__init__(timeout=180)
-        self.ctx = ctx; self.books = books; self.lang = lang
-        self.total_pages = math.ceil(len(books) / 10)
-        if self.total_pages < 2 and len(books) > 0: self.total_pages = 2
-        self.current_page = 0; self.message = None
+        self.ctx = ctx
+        self.books = books
+        self.lang = lang  # On stocke la langue
+        self.total_books = len(books)
+        self.total_pages = math.ceil(self.total_books / BOOKS_PER_PAGE)
+        self.current_page = 0
+        self.message: Optional[discord.Message] = None 
+        
+        # FORCE 2 PAGES MINIMUM (même si vide) comme demandé
+        if self.total_pages < 2 and self.total_books > 0:
+            self.total_pages = 2 
+        
         self.update_buttons()
 
     async def on_timeout(self):
-        for c in self.children: c.disabled = True
-        try: await self.message.edit(view=self) 
+        for item in self.children:
+            item.disabled = True
+        try:
+            if self.message: await self.message.edit(view=self)
         except: pass
-    
-    def check(self, i): return i.user == self.ctx.author
+
+    def check_author(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            msg = "Ce n'est pas ta commande!" if self.lang == "FR" else "This is not your command!"
+            if not interaction.response.is_done():
+                interaction.response.send_message(msg, ephemeral=True)
+            return False
+        return True
 
     def update_buttons(self):
-        self.children[0].disabled = (self.current_page == 0)
-        self.children[1].disabled = (self.current_page >= self.total_pages - 1)
+        left_button = self.children[0]
+        right_button = self.children[1]
 
-    @ui.button(emoji="⬅️", style=discord.ButtonStyle.primary)
-    async def prev(self, i: discord.Interaction, b: ui.Button):
-        if not self.check(i): return
-        self.current_page -= 1; self.update_buttons()
-        await i.response.edit_message(embed=get_book_page_embed(self.books, self.current_page, self.total_pages, self.lang), view=self)
+        # Bouton Précédent
+        if self.current_page == 0:
+            left_button.disabled = True
+            left_button.style = discord.ButtonStyle.red
+            left_button.emoji = "❌"
+        else:
+            left_button.disabled = False
+            left_button.style = discord.ButtonStyle.primary
+            left_button.emoji = "⬅️"
 
-    @ui.button(emoji="➡️", style=discord.ButtonStyle.primary)
-    async def next(self, i: discord.Interaction, b: ui.Button):
-        if not self.check(i): return
-        self.current_page += 1; self.update_buttons()
-        await i.response.edit_message(embed=get_book_page_embed(self.books, self.current_page, self.total_pages, self.lang), view=self)
+        # Bouton Suivant
+        if self.current_page >= self.total_pages - 1:
+            right_button.disabled = True
+            right_button.style = discord.ButtonStyle.red
+            right_button.emoji = "❌"
+        else:
+            right_button.disabled = False
+            right_button.style = discord.ButtonStyle.primary
+            right_button.emoji = "➡️"
 
-# --- Sélecteur Langue Principal ---
+    @ui.button(style=discord.ButtonStyle.primary, emoji="⬅️")
+    async def previous_page(self, interaction: discord.Interaction, button: ui.Button):
+        if not self.check_author(interaction): return
+        
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_buttons()
+            # On passe self.lang ici
+            embed = get_book_page_embed(self.books, self.current_page, self.total_pages, self.lang)
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await interaction.response.edit_message(view=self) 
+
+    @ui.button(style=discord.ButtonStyle.primary, emoji="➡️")
+    async def next_page(self, interaction: discord.Interaction, button: ui.Button):
+        if not self.check_author(interaction): return
+        
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self.update_buttons()
+            # On passe self.lang ici
+            embed = get_book_page_embed(self.books, self.current_page, self.total_pages, self.lang)
+            await interaction.response.edit_message(embed=embed, view=self)
+        else:
+            await interaction.response.edit_message(view=self) 
+
+# --- Vue Sélection de Langue (MODIFIÉE pour gérer Book) ---
 
 class LanguageSelect(ui.View):
     def __init__(self, command_name: str, ctx: commands.Context):
@@ -227,90 +272,134 @@ class LanguageSelect(ui.View):
         self.ctx = ctx
         self.language = None
 
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        try:
+            await self.message.edit(view=self)
+        except: pass
+
     async def send_initial_message(self):
-        embed = discord.Embed(title=":abcd: Langue / Language", description="🇫🇷 FR | 🇬🇧 ENG", color=discord.Color.red())
+        embed = discord.Embed(
+            title=":abcd: Choisissez votre langue / Choose your language",
+            description="*Cliquez sur un bouton ci-dessous*\n*Click a button below*",
+            color=discord.Color.red())
         self.message = await self.ctx.send(embed=embed, view=self)
 
+    def check_author(self, interaction: discord.Interaction) -> bool:
+        if interaction.user != self.ctx.author:
+            interaction.response.send_message("This is not your command! / Ce n'est pas ta commande!", ephemeral=True)
+            return False
+        return True
+
     @ui.button(label="FR", style=discord.ButtonStyle.primary, emoji="🇫🇷")
-    async def fr(self, i: discord.Interaction, b: ui.Button):
-        self.language = "FR"; await self.handle(i)
+    async def french_button(self, interaction: discord.Interaction, button: ui.Button):
+        self.language = "FR"
+        if not self.check_author(interaction): return
+        await self.handle_selection(interaction)
 
     @ui.button(label="ENG", style=discord.ButtonStyle.secondary, emoji="🇬🇧")
-    async def en(self, i: discord.Interaction, b: ui.Button):
-        self.language = "ENG"; await self.handle(i)
+    async def english_button(self, interaction: discord.Interaction, button: ui.Button):
+        self.language = "ENG"
+        if not self.check_author(interaction): return
+        await self.handle_selection(interaction)
 
-    async def handle(self, i: discord.Interaction):
-        if i.user != self.ctx.author: return
+    async def handle_selection(self, interaction: discord.Interaction):
+        """Gère le choix de la langue et lance la bonne action."""
         
+        # Cas spécial pour BOOK : on doit lancer une nouvelle Vue (BookBrowser)
         if self.command_name == "book":
-            fname = "book_fr.txt" if self.language == "FR" else "book_eng.txt"
-            books = get_books(fname)
-            if not books: return await i.response.edit_message(content="Erreur fichier book.", embed=None, view=None)
-            for c in self.children: c.disabled = True
-            view = BookBrowser(self.ctx, books, self.language)
-            view.message = self.message
-            await i.response.edit_message(embed=get_book_page_embed(books, 0, view.total_pages, self.language), view=view)
+            # 1. Charger le bon fichier
+            filename = "book_fr.txt" if self.language == "FR" else "book_eng.txt"
+            books = get_books(filename)
+            
+            if not books:
+                err_msg = "Erreur: Fichier introuvable." if self.language == "FR" else "Error: File not found."
+                await interaction.response.edit_message(content=err_msg, embed=None, view=None)
+                return
+
+            # 2. Créer le BookBrowser
+            # On désactive les boutons de langue avant de changer de vue (optionnel mais propre)
+            for item in self.children: item.disabled = True
+            
+            browser_view = BookBrowser(self.ctx, books, self.language)
+            first_page_embed = get_book_page_embed(books, 0, browser_view.total_pages, self.language)
+            
+            # 3. Mettre à jour le message existant avec la nouvelle vue
+            browser_view.message = self.message # Lier le message à la vue
+            await interaction.response.edit_message(embed=first_page_embed, view=browser_view)
+            return
+
+        # Pour les autres commandes (Info, Hadith, Commands), on génère juste un Embed
+        for item in self.children: item.disabled = True
         
-        elif self.command_name == "quiz":
-            fname = "quiz_fr.txt" if self.language == "FR" else "quiz_eng.txt"
-            questions = get_quiz_data(fname)
-            if not questions: return await i.response.edit_message(content="Erreur fichier quiz.", embed=None, view=None)
-            
-            # Lancer le jeu
-            for c in self.children: c.disabled = True
-            game_view = QuizGame(self.ctx, questions, self.language)
-            await i.response.edit_message(embed=game_view.get_embed(), view=game_view)
-            
+        embed_generators = {
+            "commands": lambda lang: get_commands_embed(lang),
+            "hadith": lambda lang: get_hadith_embed(lang),
+            # Info n'est plus ici car hs!info est direct, mais au cas où :
+            "info": lambda lang: get_info_embed(lang, len(bot.guilds))
+        }
+
+        embed_func = embed_generators.get(self.command_name)
+        if embed_func:
+            result_embed = embed_func(self.language)
+            await interaction.response.edit_message(embed=result_embed, view=self)
         else:
-            # Autres commandes (hadith, info, commands)
-            for c in self.children: c.disabled = True
-            embed = None
-            if self.command_name == "hadith":
-                fname = "hadiths_fr.txt" if self.language == "FR" else "hadiths_eng.txt"
-                text = get_random_hadith(fname)
-                embed = discord.Embed(title="Hadith", description=text, color=discord.Color.blue())
-            elif self.command_name == "commands":
-                desc = "hs!hadith, hs!book, hs!quiz, hs!info"
-                embed = discord.Embed(title="Commandes", description=desc, color=discord.Color.purple())
-            
-            if embed: await i.response.edit_message(embed=embed, view=self)
+            await interaction.response.edit_message(content="Error", view=None)
+
 
 # --- Commandes ---
 
 @bot.event
 async def on_ready():
-    logger.info(f'{bot.user} ready!')
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="hs!commands"))
+    logger.info(f'{bot.user} is connected to Discord!')
+    activity = discord.Activity(type=discord.ActivityType.listening, name="hs!commands")
+    await bot.change_presence(status=discord.Status.online, activity=activity)
 
-async def send_lang(ctx, cmd):
-    await LanguageSelect(cmd, ctx).send_initial_message()
+async def send_language_select(ctx: commands.Context, command_name: str):
+    view = LanguageSelect(command_name, ctx)
+    await view.send_initial_message()
 
-@bot.command()
-async def commands(ctx): await send_lang(ctx, "commands")
-@bot.command()
-async def hadith(ctx): await send_lang(ctx, "hadith")
-@bot.command()
-async def book(ctx): await send_lang(ctx, "book")
-@bot.command()
-async def quiz(ctx): await send_lang(ctx, "quiz")
-@bot.command()
-async def info(ctx): 
-    embed = discord.Embed(title="HadithSahih", description="Bot Islamique", color=discord.Color.pink())
-    embed.add_field(name="Servers", value=str(len(bot.guilds)))
+@bot.command(name='commands')
+async def list_commands(ctx: commands.Context):
+    await send_language_select(ctx, "commands")
+
+@bot.command(name='ping')
+async def ping(ctx: commands.Context):
+    latency_ms = round(bot.latency * 1000)
+    await ctx.send(f"{ctx.author.mention} :small_blue_diamond: Latence : **{latency_ms}ms**")
+
+@bot.command(name='info')
+async def info(ctx: commands.Context):
+    # Directement en Anglais pour l'interface, mais description FR
+    embed = get_info_embed("ENG", len(bot.guilds))
     await ctx.send(embed=embed)
-@bot.command()
-async def ping(ctx): await ctx.send(f"Pong! {round(bot.latency*1000)}ms")
 
-# --- Web Server ---
-def run_web():
+@bot.command(name='hadith')
+async def hadith(ctx: commands.Context):
+    await send_language_select(ctx, "hadith")
+
+@bot.command(name="book")
+async def book(ctx: commands.Context):
+    # Lance maintenant le sélecteur de langue au lieu de charger directement le FR
+    await send_language_select(ctx, "book")
+
+# --- Serveur Web ---
+
+def run_web_server():
     app = Flask('')
     @app.route('/')
-    def home(): return "Online"
-    app.run(host='0.0.0.0', port=8080)
+    def home(): return "Bot est en ligne !"
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=False)
 
 def main():
-    Thread(target=run_web).start()
-    bot.run(os.environ.get('DISCORD_BOT_TOKEN'))
+    token = os.environ.get('DISCORD_BOT_TOKEN')
+    if not token:
+        logger.error("Token introuvable.")
+        return
+    Thread(target=run_web_server).start()
+    bot.run(token)
 
 if __name__ == "__main__":
     main()
