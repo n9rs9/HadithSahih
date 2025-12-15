@@ -172,7 +172,7 @@ def get_info_embed(lang: str, server_count: int) -> discord.Embed:
         description="Des Hadiths Sahih pour vous chaque jour ! :books:", 
         color=discord.Color.pink())
     embed.add_field(name="Owner", value="@n9rs9", inline=True)
-    embed.add_field(name="Servers", value=str(server_count), inline=True)
+    embed.add_field(name="Servers", value="??", inline=True)
     return embed
 
 def get_hadith_embed(lang: str) -> discord.Embed:
