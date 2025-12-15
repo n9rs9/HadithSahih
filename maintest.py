@@ -140,6 +140,7 @@ def get_commands_embed(lang: str) -> discord.Embed:
             (" • hs!hadith", "*Affiche un hadith sahih aléatoire*"),
             (" • hs!book", "*Affiche une liste de livres islamiques*"),
             (" • hs!quiz", "*Lance un quiz sur l'Islam*"),
+            (" • hs!site", "*Lien vers le site web*"),
             (" • hs!commands", "*Toutes les commandes du bot*"),
             (" • hs!ping", "*Vérifie la latence du bot*"),
             (" • hs!info", "*Informations sur le bot*")
@@ -154,6 +155,7 @@ def get_commands_embed(lang: str) -> discord.Embed:
             (" • hs!hadith", "*Displays a random Sahih hadith*"),
             (" • hs!book", "*Displays a list of Islamic books*"),
             (" • hs!quiz", "*Start a quiz about Islam*"),
+            (" • hs!site", "*Link to the website*"),
             (" • hs!commands", "*All commands for this bot*"),
             (" • hs!ping", "*Check the bot's latency*"),
             (" • hs!info", "*Bot information*")
@@ -414,7 +416,7 @@ class QuizView(ui.View):
             if self.score == 3:
                 message = "Parfait ! Macha Allah ! 🌟"
             elif self.score == 2:
-                message = "Très bien ! Continue comme ça ! 👍"
+                message = "Très bien ! Continue comme ça ! 💎"
             elif self.score == 1:
                 message = "Pas mal ! Tu peux faire mieux ! 💪"
             else:
@@ -427,7 +429,7 @@ class QuizView(ui.View):
             if self.score == 3:
                 message = "Perfect! Masha Allah! 🌟"
             elif self.score == 2:
-                message = "Very good! Keep it up! 👍"
+                message = "Very good! Keep it up! 💎"
             elif self.score == 1:
                 message = "Not bad! You can do better! 💪"
             else:
@@ -614,6 +616,11 @@ async def book(ctx: commands.Context):
 async def quiz(ctx: commands.Context):
     """Lance un quiz de 3 questions aléatoires."""
     await send_language_select(ctx, "quiz")
+
+@bot.command(name='site')
+async def site(ctx: commands.Context):
+    """Affiche le lien vers le site web."""
+    await ctx.send(f"{ctx.author.mention} 🌐 https://hadith-sahih.pages.dev")
 
 # --- Serveur Web ---
 
